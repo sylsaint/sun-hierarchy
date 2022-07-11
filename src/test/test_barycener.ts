@@ -1,8 +1,8 @@
 import { expect } from 'chai';
-import Graph, { Vertex, Edge } from '../misc/graph';
-import { baryCentric } from '../algos/barycentric';
+import Graph, { Vertex, Edge } from '@/interface/graph';
+import { baryCentric } from '@/algos/barycentric';
 import { vegetables } from './data/data';
-import { printVertices } from '../misc/graphUtil';
+import { printVertices } from '@/utils/graph';
 
 describe('BaryCentric Method', () => {
   let vertices: Array<Vertex> = [];

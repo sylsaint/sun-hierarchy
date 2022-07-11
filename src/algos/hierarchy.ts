@@ -1,6 +1,6 @@
 import Graph, { Vertex, Edge } from '@/interface/graph';
 import { cloneGraph, findVertexById, getDummyId } from '@/utils/graph';
-import { PX, PY, DUMMY } from '../misc/constant';
+import { PX, PY, DUMMY } from '@/interface/constant';
 
 export function makeHierarchy(g: Graph): Array<Array<Vertex>> {
   let roots: Array<Vertex> = [];
@@ -119,7 +119,7 @@ function adjustLevel(g: Graph, vertices: Array<Vertex>): Array<Array<Vertex>> {
   return levels;
 }
 
-function addDummy(g: Graph, levels: Array<Array<Vertex>>): Array<Array<Vertex>> {
+function addDummy(g: Graph, levels: Vertex[][]): Vertex[][] {
   levels.map(level => {
     level.map((v, idx) => {
       const currentLevel: number = v.getOptions(PY);

@@ -1,8 +1,5 @@
-import { expect } from 'chai';
-import Graph, { Vertex, Edge } from '../misc/graph';
-import { crossCount } from '../misc/penaltyGraph';
-import { penaltyMethod } from '../algos/penaltymethod';
-import { makeHierarchy } from '../algos/hierarchy';
+import Graph, { Vertex, Edge } from '@/interface/graph';
+import { makeHierarchy } from '@/algos/hierarchy';
 
 describe('Hierarchy', () => {
   let vertices: Array<Vertex> = [];

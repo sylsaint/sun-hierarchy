@@ -1,6 +1,6 @@
 import { expect } from 'chai';
-import Graph, { Vertex, Edge } from '../misc/graph';
-import { divide } from '../algos/weakconnect';
+import Graph, { Vertex, Edge } from '@/interface/graph';
+import { divide } from '@/algos/weakconnect';
 
 describe('Divide', () => {
   let vertices: Array<Vertex> = [];

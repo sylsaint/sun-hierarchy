@@ -1,5 +1,6 @@
 import { Vertex } from '@/interface/graph';
 import { LayoutOptions } from '@/interface/definition';
+import { defaultOptions } from '@/interface/constant';
 
 export type VertexIdMap = { [key: string | number]: string | number };
 export type VertexIdNumberMap = { [key: string | number]: number };
@@ -140,7 +141,7 @@ export function alignVertices(
     reorderedLevels.reverse();
   }
   if (!horizonOrder) {
-    for(let i = 0; i < reorderedLevels.length; i++) {
+    for (let i = 0; i < reorderedLevels.length; i++) {
       reorderedLevels[i] = [...reorderedLevels[i]];
       reorderedLevels[i].reverse();
     }
@@ -304,8 +305,8 @@ function placeBlock(vid: string | number, options: BlockOptions): VertexIdNumber
 }
 
 function balance(levels: Vertex[][], xss: VertexIdNumberMap[], options: LayoutOptions): Vertex[][] {
-  const { width, height, gutter, padding } = options;
-  const { left, top } = padding;
+  const { width, height, gutter = 0, margin = { left: 0, top: 0 } } = options;
+  const { left = 0, top = 0 } = margin;
   levels
     .flatMap((vertices) => vertices)
     .map((v) => {
@@ -317,7 +318,7 @@ function balance(levels: Vertex[][], xss: VertexIdNumberMap[], options: LayoutOp
   return levels;
 }
 
-function normalize(xcoords: VertexIdNumberMap, reversed = false): { xcoords: VertexIdNumberMap, width: number } {
+function normalize(xcoords: VertexIdNumberMap, reversed = false): { xcoords: VertexIdNumberMap; width: number } {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   Object.keys(xcoords).map((key) => {
@@ -330,21 +331,13 @@ function normalize(xcoords: VertexIdNumberMap, reversed = false): { xcoords: Ver
       xcoords[key] = xcoords[key] + Math.abs(min);
     }
     if (reversed) {
-      xcoords[key] = width - xcoords[key]; 
+      xcoords[key] = width - xcoords[key];
     }
   });
   return { xcoords, width };
 }
 
-export function brandeskopf(
-  levels: Vertex[][],
-  layoutOptions: LayoutOptions = {
-    width: 100,
-    height: 20,
-    gutter: 5,
-    padding: { top: 0, left: 0, right: 0, bottom: 0 },
-  },
-) {
+export function brandeskopf(levels: Vertex[][], layoutOptions: LayoutOptions = defaultOptions) {
   const vertexMap = preprocess(levels);
   const conflicts = markConflicts(levels);
   const xss: { xcoords: VertexIdNumberMap; width: number }[] = [];
@@ -359,6 +352,6 @@ export function brandeskopf(
       xss.push(normalize(xcoords, !horizonOrder));
     });
   });
-  const minWidthXss = xss.map(xs => xs.xcoords);
+  const minWidthXss = xss.map((xs) => xs.xcoords);
   return balance(levels, minWidthXss, layoutOptions);
 }

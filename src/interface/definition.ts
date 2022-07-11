@@ -1,17 +1,19 @@
-import { Vertex } from "./graph";
+import { baryCentricOptions } from '@/algos/barycentric';
+import { Vertex } from "@/interface/graph";
 
 export interface LayoutOptions {
-  padding: Padding;
-  gutter: number;
+  margin?: Margin;
+  gutter?: number;
   width: number;
   height: number;
+  barycentricOptions?: baryCentricOptions;
 }
 
-export interface Padding {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
+export interface Margin {
+  left?: number;
+  right?: number;
+  top?: number;
+  bottom?: number;
 }
 
 export interface HashMap {

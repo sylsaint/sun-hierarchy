@@ -16,48 +16,27 @@
  */
 
 import Graph, { Vertex } from '@/interface/graph';
-import { divide } from './weakconnect';
-import { makeHierarchy } from './hierarchy';
-import { cloneGraph } from '../misc/graphUtil';
-import { LayoutOptions } from '../misc/interface';
-import { defaultOptions } from '../misc/constant';
-import { baryCentric } from './barycentric';
-import { brandeskopf } from './brandeskopf';
+import { divide } from '@/algos/weakconnect';
+import { makeHierarchy } from '@/algos/hierarchy';
+import { LayoutOptions } from '@/interface/definition';
+import { defaultOptions } from '@/interface/constant';
+import { baryCentric } from '@/algos/barycentric';
+import { brandeskopf } from '@/algos/brandeskopf';
 
-export class Sugiyama {
-  constructor() { }
-  private clone(g: Graph): Graph {
-    return cloneGraph(g);
-  }
-  private divide(g: Graph): Array<Graph> {
-    return divide(g);
-  }
-  private hierarchy(g: Graph): Vertex[][] {
-    return makeHierarchy(g);
-  }
-  private cross(g: Graph, levels: Vertex[][]): Vertex[][] {
-    const { levels: orderedLevels } = baryCentric(levels, {});
-    return orderedLevels;
-  }
-  private position(g: Graph, levels: Vertex[][], options?: LayoutOptions): Graph {
-    brandeskopf(levels, options);
-    return g;
-  }
-  public layout(g: Graph, options?: LayoutOptions): Array<Graph> {
-    let finals: Array<Graph> = [];
-    let graphs: Array<Graph> = this.divide(g);
-    let leftPadding: number = 0;
-    let merged: LayoutOptions = { ...defaultOptions, ...options };
-    const { width, gutter } = merged;
-    graphs.map(gi => {
-      let levels: Vertex[][] = this.hierarchy(gi);
-      levels = this.cross(gi, levels);
-      const maxWidth: number = Math.max.apply(null, levels.map(lvl => lvl.length));
-      let ordered: Graph = this.position(gi, levels, merged);
-      leftPadding += maxWidth * (width + gutter) + (2 * gutter | 20);
-      merged.padding = { ...merged.padding, ...{ left: leftPadding } };
-      finals.push(ordered);
+export function layout(g: Graph, options = defaultOptions): Graph[] {
+  const finalGraphs: Graph[] = [];
+  const graphs: Graph[] = divide(g);
+    let aggregateLeftMargin: number = 0;
+    const mergedOptions: LayoutOptions = { ...options };
+    const { width, gutter = 0 } = mergedOptions;
+    graphs.map(subGraph => {
+      const levels: Vertex[][] = makeHierarchy(subGraph);
+      const { levels: orderedLevels } = baryCentric(levels, {});
+      const maxVerticesCount: number = Math.max.apply(null, orderedLevels.map(lvl => lvl.length));
+      brandeskopf(orderedLevels, mergedOptions);
+      aggregateLeftMargin += maxVerticesCount * (width + gutter) + (2 * gutter | 20);
+      mergedOptions.margin = { ...mergedOptions.margin || {}, ...{ left: aggregateLeftMargin } };
+      finalGraphs.push(subGraph);
     });
-    return finals;
-  }
+    return finalGraphs;
 }

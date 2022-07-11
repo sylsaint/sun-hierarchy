@@ -1,15 +1,15 @@
-import Graph, { Vertex, Edge } from '../misc/graph';
-import { HashMap } from '../misc/interface';
+import Graph, { Vertex, Edge } from '@/interface/graph';
+import { HashMap } from '@/interface/definition';
 
-export function divide(g: Graph): Array<Graph> {
-  let graphs: Array<Graph> = [];
+export function divide(g: Graph): Graph[] {
+  let graphs: Graph[] = [];
   let visited: HashMap = {};
   g.vertices.map(v => {
     if (!visited[v.id]) {
       visited[v.id] = v;
-      let vertices: Array<Vertex> = [v];
-      let edges: Array<Edge> = [];
-      let nodes: Array<Vertex> = [v];
+      let vertices: Vertex[] = [v];
+      let edges: Edge[] = [];
+      let nodes: Vertex[] = [v];
       while (nodes.length) {
         const node: Vertex = nodes.shift() as Vertex;
         node.edges.map(edge => {
