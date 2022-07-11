@@ -4,7 +4,7 @@ import { HashMap } from '@/interface/definition';
 export function divide(g: Graph): Graph[] {
   let graphs: Graph[] = [];
   let visited: HashMap = {};
-  g.vertices.map(v => {
+  g.vertices.map((v) => {
     if (!visited[v.id]) {
       visited[v.id] = v;
       let vertices: Vertex[] = [v];
@@ -12,7 +12,7 @@ export function divide(g: Graph): Graph[] {
       let nodes: Vertex[] = [v];
       while (nodes.length) {
         const node: Vertex = nodes.shift() as Vertex;
-        node.edges.map(edge => {
+        node.edges.map((edge) => {
           edges.indexOf(edge) < 0 && edges.push(edge);
           if (edge.up == node && !visited[edge.down.id]) {
             visited[edge.down.id] = edge.down;

@@ -1,5 +1,5 @@
 /*
- * @author: sylsaint 
+ * @author: sylsaint
  * @Description: sugiyama hierarchy algorightm
  * @params: {Graph} graph, {integer} width, {integer} height, {String} align
  * @return: {Graph} graph
@@ -26,17 +26,20 @@ import { brandeskopf } from '@/algos/brandeskopf';
 export function layout(g: Graph, options = defaultOptions): Graph[] {
   const finalGraphs: Graph[] = [];
   const graphs: Graph[] = divide(g);
-    let aggregateLeftMargin: number = 0;
-    const mergedOptions: LayoutOptions = { ...options };
-    const { width, gutter = 0 } = mergedOptions;
-    graphs.map(subGraph => {
-      const levels: Vertex[][] = makeHierarchy(subGraph);
-      const { levels: orderedLevels } = baryCentric(levels, {});
-      const maxVerticesCount: number = Math.max.apply(null, orderedLevels.map(lvl => lvl.length));
-      brandeskopf(orderedLevels, mergedOptions);
-      aggregateLeftMargin += maxVerticesCount * (width + gutter) + (2 * gutter | 20);
-      mergedOptions.margin = { ...mergedOptions.margin || {}, ...{ left: aggregateLeftMargin } };
-      finalGraphs.push(subGraph);
-    });
-    return finalGraphs;
+  let aggregateLeftMargin: number = 0;
+  const mergedOptions: LayoutOptions = { ...options };
+  const { width, gutter = 0 } = mergedOptions;
+  graphs.map((subGraph) => {
+    const levels: Vertex[][] = makeHierarchy(subGraph);
+    const { levels: orderedLevels } = baryCentric(levels, {});
+    const maxVerticesCount: number = Math.max.apply(
+      null,
+      orderedLevels.map((lvl) => lvl.length),
+    );
+    brandeskopf(orderedLevels, mergedOptions);
+    aggregateLeftMargin += maxVerticesCount * (width + gutter) + ((2 * gutter) | 20);
+    mergedOptions.margin = { ...(mergedOptions.margin || {}), ...{ left: aggregateLeftMargin } };
+    finalGraphs.push(subGraph);
+  });
+  return finalGraphs;
 }

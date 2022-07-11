@@ -1,5 +1,5 @@
 import { baryCentricOptions } from '@/algos/barycentric';
-import { Vertex } from "@/interface/graph";
+import { Vertex } from '@/interface/graph';
 
 export interface LayoutOptions {
   margin?: Margin;
@@ -36,8 +36,8 @@ export interface Order {
 }
 
 export interface BKOptions {
-  root: object,
-  align: object,
-  sink: object,
-  shift: object,
+  root: object;
+  align: object;
+  sink: object;
+  shift: object;
 }

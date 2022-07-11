@@ -28,7 +28,10 @@ describe('BaryCentric Method', () => {
   const downs: Array<Vertex> = vertices.slice(4);
 
   it('Should minimize two level crossings', () => {
-    const { levels: [row, col], crossCount } = baryCentric([ups, downs], {});
+    const {
+      levels: [row, col],
+      crossCount,
+    } = baryCentric([ups, downs], {});
     expect(row.map((v) => v.getOptions('key'))).to.deep.equal(['d', 'a', 'b', 'c']);
     expect(col.map((v) => v.getOptions('key'))).to.deep.equal(['g', 'e', 'i', 'f', 'h']);
     expect(crossCount).equal(7);
@@ -58,7 +61,10 @@ describe('BaryCentric Method', () => {
 
     const g: Graph = new Graph([...ups, ...downs], edges, { directed: true });
 
-    const { levels: [row, col], crossCount } = baryCentric([ups, downs], {});
+    const {
+      levels: [row, col],
+      crossCount,
+    } = baryCentric([ups, downs], {});
     expect(row.map((v) => v.getOptions('key'))).to.deep.equal(['c', 'b', 'a']);
     expect(col.map((v) => v.getOptions('key'))).to.deep.equal(['j', 'g', 'd', 'k', 'h', 'e', 'l', 'i', 'f']);
     expect(crossCount).equal(0);
@@ -107,9 +113,12 @@ describe('BaryCentric Method', () => {
     edges.push(new Edge(downs[6], downs2[13]));
 
     const g: Graph = new Graph([...ups, ...downs, ...downs2], edges, { directed: true });
-    const { levels: [row, col], crossCount } = baryCentric([ups, downs, downs2], {});
+    const {
+      levels: [row, col],
+      crossCount,
+    } = baryCentric([ups, downs, downs2], {});
     expect(crossCount).equal(0);
-  })
+  });
   it('Should minimize 4 levels to zero', () => {
     let idx = 0;
     const first = ['a', 'b', 'c'].map((alpha) => {
@@ -124,7 +133,7 @@ describe('BaryCentric Method', () => {
     const fourth = ['j', 'k', 'l'].map((alpha) => {
       return new Vertex(idx++, { key: alpha });
     });
-    
+
     let edges: Array<Edge> = [];
     edges.push(new Edge(first[0], second[1]));
     edges.push(new Edge(first[1], second[0]));
@@ -141,43 +150,51 @@ describe('BaryCentric Method', () => {
     const g: Graph = new Graph([...first, ...second, ...third, ...fourth], edges, { directed: true });
     const { levels, crossCount } = baryCentric([first, second, third, fourth], {});
     expect(crossCount).equal(0);
-  })
+  });
   it('Should minimize vegetable levels', () => {
-    const vMap: {[key: string]: Vertex } = {};
-    const vLevels = vegetables.map(vertices => {
-      return vertices.map(v => {
+    const vMap: { [key: string]: Vertex } = {};
+    const vLevels = vegetables.map((vertices) => {
+      return vertices.map((v) => {
         const vertex = new Vertex(v.id);
         vMap[v.id] = vertex;
-        return vertex; 
+        return vertex;
       });
-    })
-    const edges = vegetables.flatMap(vertices => {
-      return vertices.flatMap(v => {
-        return v.edges.map(edge => new Edge(vMap[edge.from], vMap[edge.to]));
+    });
+    const edges = vegetables.flatMap((vertices) => {
+      return vertices.flatMap((v) => {
+        return v.edges.map((edge) => new Edge(vMap[edge.from], vMap[edge.to]));
       });
-    })
-    const g: Graph = new Graph(vLevels.flatMap(vertices => vertices), edges, { directed: true });
+    });
+    const g: Graph = new Graph(
+      vLevels.flatMap((vertices) => vertices),
+      edges,
+      { directed: true },
+    );
     const { levels, crossCount } = baryCentric(vLevels, {});
     expect(crossCount).equal(0);
-  })
+  });
   it('Should minimize vegetable levels', () => {
-    const vMap: {[key: string]: Vertex } = {};
-    const vLevels = vegetables.map(vertices => {
-      return vertices.map(v => {
+    const vMap: { [key: string]: Vertex } = {};
+    const vLevels = vegetables.map((vertices) => {
+      return vertices.map((v) => {
         const vertex = new Vertex(v.id);
         vMap[v.id] = vertex;
-        return vertex; 
+        return vertex;
       });
-    })
-    const edges = vegetables.flatMap(vertices => {
-      return vertices.flatMap(v => {
-        return v.edges.map(edge => new Edge(vMap[edge.from], vMap[edge.to]));
+    });
+    const edges = vegetables.flatMap((vertices) => {
+      return vertices.flatMap((v) => {
+        return v.edges.map((edge) => new Edge(vMap[edge.from], vMap[edge.to]));
       });
-    })
-    const g: Graph = new Graph(vLevels.flatMap(vertices => vertices), edges, { directed: true });
+    });
+    const g: Graph = new Graph(
+      vLevels.flatMap((vertices) => vertices),
+      edges,
+      { directed: true },
+    );
     const { levels, crossCount } = baryCentric(vLevels, {});
     expect(crossCount).equal(0);
-  })
+  });
   it('Should minimize crossings to zero', () => {
     let vertices: Array<Vertex> = [];
     for (let i = 0; i <= 11; i++) {
@@ -207,5 +224,5 @@ describe('BaryCentric Method', () => {
     const { levels: nLevels, crossCount } = baryCentric(levels, {});
     printVertices(levels);
     expect(crossCount).equal(0);
-  })
+  });
 });

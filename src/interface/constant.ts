@@ -5,12 +5,11 @@ export const PX = '_x';
 export const PY = '_y';
 export const DUMMY = 'dummy';
 
-
-export enum Direction { 
+export enum Direction {
   LEFT,
   RIGHT,
   UP,
-  DOWN
+  DOWN,
 }
 
 export interface HashMap {
@@ -28,10 +27,10 @@ export interface Order {
 }
 
 export interface BKOptions {
-  root: object,
-  align: object,
-  sink: object,
-  shift: object,
+  root: object;
+  align: object;
+  sink: object;
+  shift: object;
 }
 
 export const defaultOptions: LayoutOptions = {

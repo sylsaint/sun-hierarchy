@@ -14,7 +14,7 @@ export function edgeMatrix(ups: Array<Vertex>, downs: Array<Vertex>): Array<Arra
 
 function hasEdge(from: Vertex, to: Vertex): boolean {
   let exist: boolean = false;
-  from.edges.map(edge => {
+  from.edges.map((edge) => {
     if (edge.down == to) exist = true;
   });
   return exist;

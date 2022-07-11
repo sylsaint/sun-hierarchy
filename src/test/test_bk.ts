@@ -162,8 +162,7 @@ describe('Position layout bk new', () => {
     edges.push(new Edge(vertices[0], vertices[3]));
     edges.push(new Edge(vertices[7], vertices[9]));
     edges.push(new Edge(vertices[8], vertices[5]));
-  
-  
+
     const g: Graph = new Graph(vertices, edges, { directed: true });
     const levels = [
       [vertices[1], vertices[8], vertices[7]],
@@ -180,5 +179,5 @@ describe('Position layout bk new', () => {
       console.log(sortLevels[i].map((v) => `${v.id}: ${v.getOptions('x')}`).join(' , '));
     }
     printVertices(sortLevels);
-  })
+  });
 });

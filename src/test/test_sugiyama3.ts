@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import Graph, { Vertex, Edge } from '@/interface/graph';
-import { layout } from '@/algos/sugiyama'
+import { layout } from '@/algos/sugiyama';
 
 describe('Sugiyama layout with many vertices and edges', () => {
   let vertices: Array<Vertex> = [];
@@ -38,10 +38,9 @@ describe('Sugiyama layout with many vertices and edges', () => {
   edges.push(new Edge(vertices[10], vertices[19]));
   edges.push(new Edge(vertices[10], vertices[20]));
 
-
   const g: Graph = new Graph(vertices, edges, { directed: true });
   it('#layout', () => {
     const graphs: Array<Graph> = layout(g);
     expect(graphs.length).to.equal(1);
-  })
+  });
 });

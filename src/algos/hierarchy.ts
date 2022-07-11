@@ -6,11 +6,11 @@ export function makeHierarchy(g: Graph): Array<Array<Vertex>> {
   let roots: Array<Vertex> = [];
   // find all the roots without incoming edges
   let cloned: Graph = cloneGraph(g);
-  cloned.vertices.map(v => {
+  cloned.vertices.map((v) => {
     let isRoot: boolean = true;
     let outDegree: number = 0;
     let inDegree: number = 0;
-    v.edges.map(edge => {
+    v.edges.map((edge) => {
       if (edge.down == v) {
         isRoot = false;
         inDegree += 1;
@@ -28,11 +28,11 @@ export function makeHierarchy(g: Graph): Array<Array<Vertex>> {
   if (!roots.length) {
     // find the maximum ratio
     let max: number = 0;
-    cloned.vertices.map(v => {
+    cloned.vertices.map((v) => {
       let ratio: number = v.getOptions('outInRatio');
       if (ratio > max) max = ratio;
     });
-    cloned.vertices.map(v => {
+    cloned.vertices.map((v) => {
       if (v.getOptions('outInRatio') == max) roots.push(v);
     });
   }
@@ -47,12 +47,12 @@ export function makeHierarchy(g: Graph): Array<Array<Vertex>> {
     }
     visited.push(node);
     let exclude: Array<Edge> = [];
-    node.edges.map(edge => {
+    node.edges.map((edge) => {
       const down: Vertex = edge.down;
       exclude.push(edge);
       let only: boolean = true;
       // check if there are other incomming edges
-      down.edges.map(edge => {
+      down.edges.map((edge) => {
         if (edge.up != node && edge.down == down) only = false;
       });
       if (only) {
@@ -68,7 +68,7 @@ export function makeHierarchy(g: Graph): Array<Array<Vertex>> {
         roots.push(down);
       }
     });
-    exclude.map(edge => cloned.removeEdge(edge));
+    exclude.map((edge) => cloned.removeEdge(edge));
   }
   let levels: Array<Array<Vertex>> = adjustLevel(g, visited);
   addDummy(g, levels);
@@ -79,7 +79,7 @@ function adjustLevel(g: Graph, vertices: Array<Vertex>): Array<Array<Vertex>> {
   // retrieving real vertices from visited
   let levels: Array<Array<Vertex>> = [];
   let gVertices: Array<Vertex> = [];
-  vertices.map(v => {
+  vertices.map((v) => {
     const found = findVertexById(g, v.id);
     if (found) {
       found.setOptions(PY, v.getOptions(PY));
@@ -90,7 +90,7 @@ function adjustLevel(g: Graph, vertices: Array<Vertex>): Array<Array<Vertex>> {
   if (gVertices.length != vertices.length) {
     throw new Error('vertices are not equal to expected !');
   }
-  gVertices.map(v => {
+  gVertices.map((v) => {
     const lvl: number = v.getOptions(PY);
     if (levels[lvl - 1]) {
       levels[lvl - 1].push(v);
@@ -100,9 +100,9 @@ function adjustLevel(g: Graph, vertices: Array<Vertex>): Array<Array<Vertex>> {
   });
   for (let i: number = levels.length - 1; i >= 0; i--) {
     let exclude: Array<Vertex> = [];
-    levels[i].map(v => {
+    levels[i].map((v) => {
       let min: number = Number.POSITIVE_INFINITY;
-      v.edges.map(edge => {
+      v.edges.map((edge) => {
         if (edge.up == v && edge.down.getOptions(PY) < min) min = edge.down.getOptions(PY);
       });
       if (min != Number.POSITIVE_INFINITY && min != 1 && v.getOptions(PY) != min - 1) {
@@ -111,7 +111,7 @@ function adjustLevel(g: Graph, vertices: Array<Vertex>): Array<Array<Vertex>> {
         exclude.push(v);
       }
     });
-    exclude.map(v => {
+    exclude.map((v) => {
       const pos: number = levels[i].indexOf(v);
       if (pos > -1) levels[i].splice(pos, 1);
     });
@@ -120,13 +120,13 @@ function adjustLevel(g: Graph, vertices: Array<Vertex>): Array<Array<Vertex>> {
 }
 
 function addDummy(g: Graph, levels: Vertex[][]): Vertex[][] {
-  levels.map(level => {
+  levels.map((level) => {
     level.map((v, idx) => {
       const currentLevel: number = v.getOptions(PY);
       const dummyVertice: Array<Vertex> = [];
       const dummyEdges: Array<Edge> = [];
       const excludeEdges: Array<Edge> = [];
-      v.edges.map(edge => {
+      v.edges.map((edge) => {
         if (edge.up != v) return;
         let down: Vertex = edge.down;
         const nextLevel: number = down.getOptions(PY);
@@ -147,15 +147,15 @@ function addDummy(g: Graph, levels: Vertex[][]): Vertex[][] {
           excludeEdges.push(edge);
         }
       });
-      dummyVertice.map(v => {
+      dummyVertice.map((v) => {
         g.addVertex(v);
       });
-      dummyEdges.map(e => {
+      dummyEdges.map((e) => {
         g.addEdge(e);
       });
-      excludeEdges.map(e => {
+      excludeEdges.map((e) => {
         g.removeEdge(e);
-      })
+      });
     });
   });
   return levels;
