@@ -1,5 +1,5 @@
-import { Vertex } from '../misc/graph';
-import { LayoutOptions } from '../misc/interface';
+import { Vertex } from '@/interface/graph';
+import { LayoutOptions } from '@/interface/definition';
 
 export type VertexIdMap = { [key: string | number]: string | number };
 export type VertexIdNumberMap = { [key: string | number]: number };

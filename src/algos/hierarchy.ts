@@ -1,5 +1,5 @@
-import Graph, { Vertex, Edge } from '../misc/graph';
-import { cloneGraph, findVertexById, getDummyId } from '../misc/graphUtil';
+import Graph, { Vertex, Edge } from '@/interface/graph';
+import { cloneGraph, findVertexById, getDummyId } from '@/utils/graph';
 import { PX, PY, DUMMY } from '../misc/constant';
 
 export function makeHierarchy(g: Graph): Array<Array<Vertex>> {
@@ -80,8 +80,8 @@ function adjustLevel(g: Graph, vertices: Array<Vertex>): Array<Array<Vertex>> {
   let levels: Array<Array<Vertex>> = [];
   let gVertices: Array<Vertex> = [];
   vertices.map(v => {
-    let found: Vertex = findVertexById(g, v.id);
-    if (found instanceof Vertex) {
+    const found = findVertexById(g, v.id);
+    if (found) {
       found.setOptions(PY, v.getOptions(PY));
       found.setOptions(PX, v.getOptions(PX));
       gVertices.push(found);

@@ -1,6 +1,6 @@
-import { Vertex } from '../misc/graph';
-import { edgeMatrix } from '../misc/misc';
-import { crossCount } from '../misc/penaltyGraph';
+import { Vertex } from '@/interface/graph';
+import { edgeMatrix } from '@/utils/edge';
+import { crossCount } from '@/utils/penaltyGraph';
 
 /*
  * heuristic method for the reordering of the row order \sigma_1 = v_1 v_2 \cdots v_{|V_1|} to
