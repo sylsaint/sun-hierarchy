@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "lib": ["DOM", "ES2019", "ESNext"],
+    "declaration": true,
+    "outDir": "./dist",
+    "strict": true,
+    "noImplicitAny": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "**/test/*"]
+}
