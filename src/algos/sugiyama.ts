@@ -32,13 +32,13 @@ export function layout(g: Graph, options = defaultOptions): Graph[] {
   graphs.map((subGraph) => {
     const levels: Vertex[][] = makeHierarchy(subGraph);
     const { levels: orderedLevels } = baryCentric(levels, {});
-    const maxVerticesCount: number = Math.max.apply(
+    const maxWidth: number = Math.max.apply(
       null,
-      orderedLevels.map((lvl) => lvl.length),
+      orderedLevels.flatMap((vertices) => vertices).map(v => v.getOptions('x')),
     );
     brandeskopf(orderedLevels, mergedOptions);
-    aggregateLeftMargin += maxVerticesCount * (width + gutter) + ((2 * gutter) | 20);
-    mergedOptions.margin = { ...(mergedOptions.margin || {}), ...{ left: aggregateLeftMargin } };
+    aggregateLeftMargin += maxWidth + width + (gutter || 20);
+    mergedOptions.margin = { ...(mergedOptions.margin || {}), left: aggregateLeftMargin };
     finalGraphs.push(subGraph);
   });
   return finalGraphs;

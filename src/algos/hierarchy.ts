@@ -2,8 +2,8 @@ import Graph, { Vertex, Edge } from '@/interface/graph';
 import { cloneGraph, findVertexById, getDummyId } from '@/utils/graph';
 import { PX, PY, DUMMY } from '@/interface/constant';
 
-export function makeHierarchy(g: Graph): Array<Array<Vertex>> {
-  let roots: Array<Vertex> = [];
+export function makeHierarchy(g: Graph): Vertex[][] {
+  let roots: Vertex[] = [];
   // find all the roots without incoming edges
   let cloned: Graph = cloneGraph(g);
   cloned.vertices.map((v) => {
@@ -75,7 +75,7 @@ export function makeHierarchy(g: Graph): Array<Array<Vertex>> {
   return levels;
 }
 
-function adjustLevel(g: Graph, vertices: Array<Vertex>): Array<Array<Vertex>> {
+function adjustLevel(g: Graph, vertices: Array<Vertex>): Vertex[][] {
   // retrieving real vertices from visited
   let levels: Array<Array<Vertex>> = [];
   let gVertices: Array<Vertex> = [];
