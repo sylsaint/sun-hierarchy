@@ -32,11 +32,11 @@ export function layout(g: Graph, options = defaultOptions): Graph[] {
   graphs.map((subGraph) => {
     const levels: Vertex[][] = makeHierarchy(subGraph);
     const { levels: orderedLevels } = baryCentric(levels, {});
+    brandeskopf(orderedLevels, mergedOptions);
     const maxWidth: number = Math.max.apply(
       null,
       orderedLevels.flatMap((vertices) => vertices).map((v) => v.getOptions('x')),
     );
-    brandeskopf(orderedLevels, mergedOptions);
     aggregateLeftMargin += maxWidth + width + (gutter || 20);
     mergedOptions.margin = { ...(mergedOptions.margin || {}), left: aggregateLeftMargin };
     finalGraphs.push(subGraph);
