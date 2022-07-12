@@ -2,6 +2,8 @@
 
 A library for hierarchy graph layout based on sugiyama framework
 
+![demo](assets/demo.gif)
+
 ## Intro
 
 This library is based on sugiyama framework, there are 4 steps to handle input graph
