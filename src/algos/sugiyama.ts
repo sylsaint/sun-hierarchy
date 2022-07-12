@@ -34,7 +34,7 @@ export function layout(g: Graph, options = defaultOptions): Graph[] {
     const { levels: orderedLevels } = baryCentric(levels, {});
     const maxWidth: number = Math.max.apply(
       null,
-      orderedLevels.flatMap((vertices) => vertices).map(v => v.getOptions('x')),
+      orderedLevels.flatMap((vertices) => vertices).map((v) => v.getOptions('x')),
     );
     brandeskopf(orderedLevels, mergedOptions);
     aggregateLeftMargin += maxWidth + width + (gutter || 20);
