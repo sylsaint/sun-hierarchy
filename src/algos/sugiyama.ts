@@ -37,7 +37,7 @@ export function layout(g: Graph, options = defaultOptions): Graph[] {
       null,
       orderedLevels.flatMap((vertices) => vertices).map((v) => v.getOptions('x')),
     );
-    aggregateLeftMargin += maxWidth + width + (gutter || 20);
+    aggregateLeftMargin = maxWidth + width + (gutter || 20);
     mergedOptions.margin = { ...(mergedOptions.margin || {}), left: aggregateLeftMargin };
     finalGraphs.push(subGraph);
   });
