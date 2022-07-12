@@ -1,4 +1,4 @@
-import { baryCentricOptions } from '@/algos/barycentric';
+import { BaryCentricOptions } from '@/algos/barycentric';
 import { Vertex } from '@/interface/graph';
 
 export interface LayoutOptions {
@@ -6,7 +6,7 @@ export interface LayoutOptions {
   gutter?: number;
   width: number;
   height: number;
-  barycentricOptions?: baryCentricOptions;
+  barycentricOptions?: BaryCentricOptions;
 }
 
 export interface Margin {

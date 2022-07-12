@@ -56,7 +56,7 @@ export type baryCentricResult = {
   crossCount: number;
 };
 
-export type baryCentricOptions = {
+export type BaryCentricOptions = {
   // total iteration round
   totalRound?: number;
   // if row is fixed, only col will be permutated
@@ -353,7 +353,7 @@ export function calcMulLevelbaryCentric(
  * @param options configuration to adjust total round, etc
  * @returns reordered vertices of each level and minimum crossings reached
  */
-export function baryCentric(levels: Vertex[][], options: baryCentricOptions = {}) {
+export function baryCentric(levels: Vertex[][], options: BaryCentricOptions = {}) {
   if (levels.length <= 1) return { levels, crossCount: 0 };
   if (levels.length === 2) {
     const { row, col, crossCount } = calcTwoLevelbaryCentric(levels[0], levels[1], options);
