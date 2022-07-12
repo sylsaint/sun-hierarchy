@@ -1,6 +1,6 @@
 {
   "name": "sun-hierarchy",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "description": "A library for hierarchy graph layout based on sugiyama framework",
   "keywords": [
     "hierarchy",
