@@ -8,10 +8,10 @@ A library for hierarchy graph layout based on sugiyama framework
 
 This library is based on sugiyama framework, there are 4 steps to handle input graph
 
-1. divide the input graph into separate isolte graphs
-2. use longest path to determine hierarchy of every graph
-3. cross redution by heuristic barycentric method
-4. position vertices of every level with essay: "Fast and Simple Horizontal Coordinate Assignment"
+1. divide the input graph into separate isolate graphs
+2. use longest path to determine hierarchy of each graph
+3. reduce crossings by heuristic barycentric method
+4. position vertices of each level with essay: "Fast and Simple Horizontal Coordinate Assignment"
 
 ## Playground
 
