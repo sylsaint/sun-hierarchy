@@ -4,6 +4,14 @@ A library for hierarchy graph layout based on sugiyama framework
 
 ![demo](assets/demo.gif)
 
+## Install
+
+```bash
+npm i sun-hierarchy --save
+
+yarn add sun-hierarchy --save
+```
+
 ## Intro
 
 This library is based on sugiyama framework, there are 4 steps to handle input graph
@@ -12,6 +20,7 @@ This library is based on sugiyama framework, there are 4 steps to handle input g
 2. use longest path to determine hierarchy of each graph
 3. reduce crossings by heuristic barycentric method
 4. position vertices of each level with essay: "Fast and Simple Horizontal Coordinate Assignment"
+
 
 ## Playground
 
