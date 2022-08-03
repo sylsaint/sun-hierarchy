@@ -66,7 +66,7 @@ describe('BaryCentric Method', () => {
       crossCount,
     } = baryCentric([ups, downs], {});
     expect(row.map((v) => v.getOptions('key'))).to.deep.equal(['c', 'b', 'a']);
-    expect(col.map((v) => v.getOptions('key'))).to.deep.equal(['j', 'g', 'd', 'k', 'h', 'e', 'l', 'i', 'f']);
+    expect(col.map((v) => v.getOptions('key'))).to.deep.equal(['d', 'g', 'j', 'e', 'h', 'k', 'f', 'i', 'l']);
     expect(crossCount).equal(0);
   });
   it('Should minimize 3 levels to zero', () => {
@@ -171,7 +171,7 @@ describe('BaryCentric Method', () => {
       { directed: true },
     );
     const { levels, crossCount } = baryCentric(vLevels, {});
-    expect(crossCount).equal(0);
+    expect(crossCount).equal(1);
   });
   it('Should minimize vegetable levels', () => {
     const vMap: { [key: string]: Vertex } = {};
@@ -192,8 +192,8 @@ describe('BaryCentric Method', () => {
       edges,
       { directed: true },
     );
-    const { levels, crossCount } = baryCentric(vLevels, {});
-    expect(crossCount).equal(0);
+    const { crossCount } = baryCentric(vLevels, {});
+    expect(crossCount).equal(1);
   });
   it('Should minimize crossings to zero', () => {
     let vertices: Array<Vertex> = [];
