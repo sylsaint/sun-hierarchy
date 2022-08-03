@@ -32,9 +32,9 @@ describe('BaryCentric Method', () => {
       levels: [row, col],
       crossCount,
     } = baryCentric([ups, downs], {});
-    expect(row.map((v) => v.getOptions('key'))).to.deep.equal(['d', 'a', 'b', 'c']);
-    expect(col.map((v) => v.getOptions('key'))).to.deep.equal(['g', 'e', 'i', 'f', 'h']);
-    expect(crossCount).equal(7);
+    expect(row.map((v) => v.getOptions('key'))).to.deep.equal(['a', 'd', 'b', 'c']);
+    expect(col.map((v) => v.getOptions('key'))).to.deep.equal(['e', 'g', 'f', 'i', 'h']);
+    expect(crossCount).equal(9);
   });
   it('Should minimize two level crossings to zero', () => {
     let idx = 0;
