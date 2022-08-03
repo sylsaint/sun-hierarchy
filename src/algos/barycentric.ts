@@ -20,7 +20,7 @@ type TwoLevelbaryCentricResult = {
   row: Vertex[];
   col: Vertex[];
   crossCount: number;
-}
+};
 
 type TwoLevelbaryCentricOptions = {
   // current iteration round
@@ -48,12 +48,12 @@ type MulLevelbaryCentricOptions = {
 type MulLevelbaryCentricResult = {
   levels: Vertex[][];
   totalCross: number;
-}
+};
 
 export type baryCentricResult = {
   levels: Vertex[][];
   crossCount: number;
-}
+};
 
 export type BaryCentricOptions = {
   // total iteration round
@@ -65,22 +65,23 @@ export type BaryCentricOptions = {
 };
 
 const DEFAULT_TOTAL_ROUND = 12;
+const DEFAULT_TOTAL_BI_ROUND = 6;
 
 function crossCount(rows: Vertex[], cols: Vertex[]): number {
   const matrix: number[][] = [];
   rows.map((vr, row) => {
     matrix[row] = [];
     cols.map((vc, col) => {
-      const hasEdge = vr.edges.findIndex(edge => edge.down.id === vc.id) !== -1
+      const hasEdge = vr.edges.findIndex((edge) => edge.down.id === vc.id) !== -1;
       if (hasEdge) {
         matrix[row][col] = 1;
       } else {
         matrix[row][col] = 0;
       }
-    })
-  })
+    });
+  });
   let totalCross = 0;
-  for(let r = 0; r < matrix.length; r++) {
+  for (let r = 0; r < matrix.length; r++) {
     const row = matrix[r];
     let cross = 0;
     for (let c = 0; c < row.length; c++) {
@@ -88,7 +89,7 @@ function crossCount(rows: Vertex[], cols: Vertex[]): number {
       const r1 = r + 1;
       const c1 = c;
       for (let rr = r1; rr < matrix.length; rr++) {
-        const rrow = matrix[rr]
+        const rrow = matrix[rr];
         for (let cc = 0; cc < c1; cc++) {
           if (rrow[cc] === 1) cross += 1;
         }
@@ -145,7 +146,7 @@ export function calcTwoLevelbaryCentric(
   col: Vertex[],
   {
     currentRound = 1,
-    totalRound = DEFAULT_TOTAL_ROUND,
+    totalRound = DEFAULT_TOTAL_BI_ROUND,
     minCross = Number.POSITIVE_INFINITY,
     exchanged = {},
     rowFixed,
@@ -155,6 +156,8 @@ export function calcTwoLevelbaryCentric(
   const { rows } = calcbaryCentricCoefficient(row, col);
   let KS: number = crossCount(row, col);
   let KSS = KS;
+  let rowOrdered = false;
+  let colOrdered = false;
 
   let newRow = [...row];
   if (!rowFixed) {
@@ -163,13 +166,15 @@ export function calcTwoLevelbaryCentric(
         return { value: r, idx: i };
       })
       .sort((a, b) => {
-        return a.value <= b.value ? -1 : 1;
+        if (a.value === b.value) return 0;
+        return a.value < b.value ? -1 : 1;
       })
       .map((order) => {
         return row[order.idx];
       });
     KSS = crossCount(newRow, col);
     if (KSS < KS) {
+      rowOrdered = true;
       KS = KSS;
     }
   }
@@ -182,35 +187,26 @@ export function calcTwoLevelbaryCentric(
         return { value: r, idx: i };
       })
       .sort((a, b) => {
-        return a.value <= b.value ? -1 : 1;
+        if (a.value === b.value) return 0;
+        return a.value < b.value ? -1 : 1;
       })
       .map((order) => {
         return col[order.idx];
       });
     KSS = crossCount(newRow, newCol);
     if (KSS < KS) {
+      colOrdered = true;
       KS = KSS;
     }
   }
-  if (KS >= minCross) {
-    return finetuneTwoLevelbaryCentric(newRow, newCol, {
-      currentRound,
-      totalRound,
-      exchanged,
-      crossCount: minCross,
-      rowFixed,
-      colFixed,
-    });
-  } else {
-    return calcTwoLevelbaryCentric(newRow, newCol, {
-      currentRound,
-      totalRound,
-      minCross: KS,
-      exchanged,
-      rowFixed,
-      colFixed,
-    });
-  }
+  return finetuneTwoLevelbaryCentric(rowOrdered ? newRow : [...row], colOrdered ? newCol : [...col], {
+    currentRound,
+    totalRound,
+    exchanged,
+    crossCount: KS,
+    rowFixed,
+    colFixed,
+  });
 }
 
 /**
@@ -226,7 +222,7 @@ function finetuneTwoLevelbaryCentric(
   col: Vertex[],
   {
     currentRound = 1,
-    totalRound = DEFAULT_TOTAL_ROUND,
+    totalRound = DEFAULT_TOTAL_BI_ROUND,
     exchanged = {},
     crossCount = Number.POSITIVE_INFINITY,
     rowFixed,
@@ -327,7 +323,7 @@ function upDownPhase(levels: Vertex[][]): MulLevelbaryCentricResult {
   let totalCross = 0;
   for (let i = levels.length - 1; i > 0; i--) {
     if (i === 0) continue;
-    const { row, crossCount } = calcTwoLevelbaryCentric(levels[i-1], levels[i], { colFixed: true });
+    const { row, crossCount } = calcTwoLevelbaryCentric(levels[i - 1], levels[i], { colFixed: true });
     totalCross += crossCount;
     levels[i - 1] = row;
   }
@@ -353,7 +349,7 @@ export function calcMulLevelbaryCentric(
     totalCross = downUpCross;
     roundLevels = downUpLevels;
   }
-  while(currentRound < totalRound) {
+  while (currentRound < totalRound) {
     const { levels: upDownLevels } = upDownPhase(roundLevels);
     const result = downUpPhase(upDownLevels);
     currentRound += 2;
@@ -369,7 +365,7 @@ export function calcMulLevelbaryCentric(
 }
 
 /**
- * 
+ *
  * @param levels arrays of vertices which have been layered
  * @param options configuration to adjust total round, etc
  * @returns reordered vertices of each level and minimum crossings reached
@@ -377,7 +373,7 @@ export function calcMulLevelbaryCentric(
 export function baryCentric(levels: Vertex[][], options: BaryCentricOptions = {}) {
   if (levels.length <= 1) return { levels, crossCount: 0 };
   if (levels.length === 2) {
-    const {row, col, crossCount } = calcTwoLevelbaryCentric(levels[0], levels[1], options);
+    const { row, col, crossCount } = calcTwoLevelbaryCentric(levels[0], levels[1], options);
     return { levels: [row, col], crossCount };
   }
   const { levels: orderedLevels, totalCross } = calcMulLevelbaryCentric(levels, options);
