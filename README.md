@@ -41,10 +41,6 @@ This library is based on the Sugiyama framework. There are 4 steps to handle the
 3. Reduce crossings by heuristic barycentric method
 4. Position vertices of each level with the algorithm: "Fast and Simple Horizontal Coordinate Assignment"
 
-## Playground
-
-https://sylsaint.github.io/sun-hierarchy-playground/
-
 ## Usage
 
 ### Layout
