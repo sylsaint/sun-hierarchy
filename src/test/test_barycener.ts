@@ -5,12 +5,12 @@ import { vegetables } from './data/data';
 import { printVertices } from '@/utils/graph';
 
 describe('BaryCentric Method', () => {
-  let vertices: Array<Vertex> = [];
+  const vertices: Array<Vertex> = [];
   const alphas: Array<string> = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
   alphas.map((alpha, idx) => {
     vertices.push(new Vertex(idx, { key: alpha }));
   });
-  let edges: Array<Edge> = [];
+  const edges: Array<Edge> = [];
   edges.push(new Edge(vertices[0], vertices[4]));
   edges.push(new Edge(vertices[0], vertices[5]));
   edges.push(new Edge(vertices[1], vertices[4]));
@@ -38,17 +38,17 @@ describe('BaryCentric Method', () => {
   });
   it('Should minimize two level crossings to zero', () => {
     let idx = 0;
-    let ups: Vertex[] = [];
+    const ups: Vertex[] = [];
     const alphas: Array<string> = ['a', 'b', 'c'];
     alphas.map((alpha) => {
       ups.push(new Vertex(idx++, { key: alpha }));
     });
-    let downs: Vertex[] = [];
+    const downs: Vertex[] = [];
     const alphaDowns = ['d', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
     alphaDowns.map((alpha) => {
       downs.push(new Vertex(idx++, { key: alpha }));
     });
-    let edges: Array<Edge> = [];
+    const edges: Array<Edge> = [];
     edges.push(new Edge(ups[0], downs[2]));
     edges.push(new Edge(ups[0], downs[5]));
     edges.push(new Edge(ups[0], downs[8]));
@@ -71,22 +71,22 @@ describe('BaryCentric Method', () => {
   });
   it('Should minimize 3 levels to zero', () => {
     let idx = 0;
-    let ups: Vertex[] = [];
+    const ups: Vertex[] = [];
     const alphas: Array<string> = ['a', 'b', 'c'];
     alphas.map((alpha) => {
       ups.push(new Vertex(idx++, { key: alpha }));
     });
-    let downs: Vertex[] = [];
+    const downs: Vertex[] = [];
     const alphaDowns = ['d', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
     alphaDowns.map((alpha) => {
       downs.push(new Vertex(idx++, { key: alpha }));
     });
-    let downs2: Vertex[] = [];
+    const downs2: Vertex[] = [];
     const alphaDowns2 = ['m', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
     alphaDowns2.map((alpha) => {
       downs2.push(new Vertex(idx++, { key: alpha }));
     });
-    let edges: Array<Edge> = [];
+    const edges: Array<Edge> = [];
     edges.push(new Edge(ups[0], downs[2]));
     edges.push(new Edge(ups[0], downs[5]));
     edges.push(new Edge(ups[0], downs[8]));
@@ -134,7 +134,7 @@ describe('BaryCentric Method', () => {
       return new Vertex(idx++, { key: alpha });
     });
 
-    let edges: Array<Edge> = [];
+    const edges: Array<Edge> = [];
     edges.push(new Edge(first[0], second[1]));
     edges.push(new Edge(first[1], second[0]));
     edges.push(new Edge(first[2], second[0]));
@@ -196,12 +196,12 @@ describe('BaryCentric Method', () => {
     expect(crossCount).equal(1);
   });
   it('Should minimize crossings to zero', () => {
-    let vertices: Array<Vertex> = [];
+    const vertices: Array<Vertex> = [];
     for (let i = 0; i <= 11; i++) {
       vertices.push(new Vertex(i));
     }
     vertices[0].setOptions('dummpy', true);
-    let edges: Array<Edge> = [];
+    const edges: Array<Edge> = [];
     edges.push(new Edge(vertices[1], vertices[3]));
     edges.push(new Edge(vertices[3], vertices[4]));
     edges.push(new Edge(vertices[3], vertices[5]));

@@ -3,13 +3,13 @@ import Graph, { Vertex, Edge } from '@/interface/graph';
 import { layout } from '@/algos/sugiyama';
 
 describe('Sugiyama layout with 6 sub graphs', () => {
-  let vertices: Array<Vertex> = [];
+  const vertices: Array<Vertex> = [];
   for (let i: number = 0; i < 17; i++) {
     vertices.push(new Vertex(i));
   }
   // a, b, c, d, e, f, g, h, i, j,  k,  l
   // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-  let edges: Array<Edge> = [];
+  const edges: Array<Edge> = [];
   edges.push(new Edge(vertices[0], vertices[3]));
   edges.push(new Edge(vertices[0], vertices[7]));
   edges.push(new Edge(vertices[0], vertices[8]));

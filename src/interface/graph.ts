@@ -1,8 +1,8 @@
 export class Vertex {
   private _id: number | string;
-  private _options: object = { up: 1, down: 1 };
+  private _options: Record<string, any> = { up: 1, down: 1 };
   private adjacents: Array<Edge>;
-  constructor(id: number | string, opts?: object) {
+  constructor(id: number | string, opts?: Record<string, any>) {
     this._id = id;
     this._options = { ...this._options, ...opts };
     this.adjacents = [];
@@ -60,8 +60,8 @@ export class Vertex {
 export class Edge {
   private source: Vertex;
   private target: Vertex;
-  private _options: object = {};
-  constructor(source: Vertex, target: Vertex, opts?: object) {
+  private _options: Record<string, any> = {};
+  constructor(source: Vertex, target: Vertex, opts?: Record<string, any>) {
     this.source = source;
     this.target = target;
     this._options = opts || this._options;
@@ -86,7 +86,7 @@ export class Edge {
   set down(v: Vertex) {
     this.target = v;
   }
-  get options(): object {
+  get options(): Record<string, any> {
     return this._options;
   }
   getOptions(name: any) {
@@ -135,7 +135,7 @@ export default class Graph {
   }
   removeVertex(v: Vertex): Vertex | any {
     if (this.hasVertex(v)) {
-      let rmIdx = this.findVertex(v);
+      const rmIdx = this.findVertex(v);
       this._vertices.splice(rmIdx, 1);
       v.edges.map((edge) => {
         this.removeEdge(edge);
@@ -176,7 +176,7 @@ export default class Graph {
     edge.up.add(edge);
     edge.down.add(edge);
   }
-  edgeAddable(edge: Edge): Boolean {
+  edgeAddable(edge: Edge): boolean {
     let canAdd = true;
     // check if edge is existing
     if (this.hasEdge(edge)) {
@@ -209,19 +209,19 @@ export default class Graph {
   /*
    * Return the number of vertices
    */
-  get order(): Number {
+  get order(): number {
     return this._vertices.length;
   }
   /*
    * Indicate whether the graph is emtpy
    */
-  get empty(): Boolean {
-    return this.order == 0;
+  get empty(): boolean {
+    return this.order === 0;
   }
   /*
    * Indicate whether the graph is trivial
    */
-  get trivial(): Boolean {
+  get trivial(): boolean {
     return this.order <= 1;
   }
 }

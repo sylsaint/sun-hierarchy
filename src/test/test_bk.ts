@@ -4,7 +4,7 @@ import { DUMMY } from '@/interface/constant';
 import { printVertices } from '@/utils/graph';
 
 describe('Position layout bk new', () => {
-  let vertices: Array<Vertex> = [];
+  const vertices: Array<Vertex> = [];
   for (let i: number = 0; i < 26; i++) {
     vertices.push(new Vertex(i));
   }
@@ -22,7 +22,7 @@ describe('Position layout bk new', () => {
   vertices[22].setOptions('type', DUMMY);
   // a, b, c, d, e, f, g, h, i, j,  k,  l
   // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-  let edges: Array<Edge> = [];
+  const edges: Array<Edge> = [];
   edges.push(new Edge(vertices[0], vertices[2]));
   edges.push(new Edge(vertices[0], vertices[7]));
   edges.push(new Edge(vertices[0], vertices[9]));
@@ -58,7 +58,7 @@ describe('Position layout bk new', () => {
   edges.push(new Edge(vertices[22], vertices[25]));
 
   const g: Graph = new Graph(vertices, edges, { directed: true });
-  let nLevels: Array<Array<Vertex>> = [];
+  const nLevels: Array<Array<Vertex>> = [];
   const levelNumber: Array<number> = [0, 2, 10, 16, 23, 26];
 
   levelNumber.map((v, idx) => {
@@ -79,11 +79,11 @@ describe('Position layout bk new', () => {
     // brandeskopf(nLevels, { width: 100, height: 20, gutter: 5, padding: { left: 0, top: 0, right: 0, bottom: 0 } });
   });
   it('should brandeskopf correctly with 7 nodes', () => {
-    let vertices: Array<Vertex> = [];
+    const vertices: Array<Vertex> = [];
     for (let i = 0; i <= 7; i++) {
       vertices.push(new Vertex(i));
     }
-    let edges: Array<Edge> = [];
+    const edges: Array<Edge> = [];
     edges.push(new Edge(vertices[1], vertices[2]));
     edges.push(new Edge(vertices[1], vertices[7]));
     edges.push(new Edge(vertices[2], vertices[3]));
@@ -109,12 +109,12 @@ describe('Position layout bk new', () => {
     }
   });
   it('should brandeskopf correctly with tvision nodes', () => {
-    let vertices: Array<Vertex> = [];
+    const vertices: Array<Vertex> = [];
     for (let i = 0; i <= 11; i++) {
       vertices.push(new Vertex(i));
     }
     vertices[0].setOptions('dummpy', true);
-    let edges: Array<Edge> = [];
+    const edges: Array<Edge> = [];
     edges.push(new Edge(vertices[1], vertices[3]));
     edges.push(new Edge(vertices[3], vertices[4]));
     edges.push(new Edge(vertices[3], vertices[5]));
@@ -146,13 +146,13 @@ describe('Position layout bk new', () => {
     printVertices(sortLevels);
   });
   it('Should do right layout', () => {
-    let vertices: Array<Vertex> = [];
+    const vertices: Array<Vertex> = [];
     for (let i: number = 0; i < 10; i++) {
       vertices.push(new Vertex(i));
     }
     // a, b, c, d, e, f, g, h, i, j,  k,  l
     // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-    let edges: Array<Edge> = [];
+    const edges: Array<Edge> = [];
     edges.push(new Edge(vertices[1], vertices[4]));
     edges.push(new Edge(vertices[1], vertices[5]));
     edges.push(new Edge(vertices[4], vertices[3]));

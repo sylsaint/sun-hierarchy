@@ -113,8 +113,8 @@ function getKey(key1: string | number, key2: string | number, reversed: boolean 
  */
 function calcbaryCentricCoefficient(prevLevel: Array<Vertex>, nextLevel: Array<Vertex>) {
   const matrix: Array<Array<number>> = edgeMatrix(prevLevel, nextLevel);
-  let rows: Array<number> = [];
-  let cols: Array<number> = [];
+  const rows: Array<number> = [];
+  const cols: Array<number> = [];
   prevLevel.map((_v, idx) => {
     rows[idx] =
       matrix[idx].map((v, i) => v * (i + 1)).reduce((prev, cur) => prev + cur, 0) /

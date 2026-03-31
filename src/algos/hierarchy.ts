@@ -3,9 +3,9 @@ import { cloneGraph, findVertexById, getDummyId } from '@/utils/graph';
 import { PX, PY, DUMMY } from '@/interface/constant';
 
 export function makeHierarchy(g: Graph): Vertex[][] {
-  let roots: Vertex[] = [];
+  const roots: Vertex[] = [];
   // find all the roots without incoming edges
-  let cloned: Graph = cloneGraph(g);
+  const cloned: Graph = cloneGraph(g);
   cloned.vertices.map((v) => {
     let isRoot: boolean = true;
     let outDegree: number = 0;
@@ -29,14 +29,14 @@ export function makeHierarchy(g: Graph): Vertex[][] {
     // find the maximum ratio
     let max: number = 0;
     cloned.vertices.map((v) => {
-      let ratio: number = v.getOptions('outInRatio');
+      const ratio: number = v.getOptions('outInRatio');
       if (ratio > max) max = ratio;
     });
     cloned.vertices.map((v) => {
       if (v.getOptions('outInRatio') == max) roots.push(v);
     });
   }
-  let visited = [];
+  const visited = [];
   while (roots.length) {
     const node: Vertex = roots.shift() as Vertex;
     if (!node.getOptions(PY)) {
@@ -46,7 +46,7 @@ export function makeHierarchy(g: Graph): Vertex[][] {
       continue;
     }
     visited.push(node);
-    let exclude: Array<Edge> = [];
+    const exclude: Array<Edge> = [];
     node.edges.map((edge) => {
       const down: Vertex = edge.down;
       exclude.push(edge);
@@ -56,7 +56,7 @@ export function makeHierarchy(g: Graph): Vertex[][] {
         if (edge.up != node && edge.down == down) only = false;
       });
       if (only) {
-        let downLevel: number = down.getOptions(PY);
+        const downLevel: number = down.getOptions(PY);
         if (!downLevel) {
           down.setOptions(PY, node.getOptions(PY) + 1);
         } else {
@@ -70,15 +70,15 @@ export function makeHierarchy(g: Graph): Vertex[][] {
     });
     exclude.map((edge) => cloned.removeEdge(edge));
   }
-  let levels: Array<Array<Vertex>> = adjustLevel(g, visited);
+  const levels: Array<Array<Vertex>> = adjustLevel(g, visited);
   addDummy(g, levels);
   return levels;
 }
 
 function adjustLevel(g: Graph, vertices: Array<Vertex>): Vertex[][] {
   // retrieving real vertices from visited
-  let levels: Array<Array<Vertex>> = [];
-  let gVertices: Array<Vertex> = [];
+  const levels: Array<Array<Vertex>> = [];
+  const gVertices: Array<Vertex> = [];
   vertices.map((v) => {
     const found = findVertexById(g, v.id);
     if (found) {
@@ -99,7 +99,7 @@ function adjustLevel(g: Graph, vertices: Array<Vertex>): Vertex[][] {
     }
   });
   for (let i: number = levels.length - 1; i >= 0; i--) {
-    let exclude: Array<Vertex> = [];
+    const exclude: Array<Vertex> = [];
     levels[i].map((v) => {
       let min: number = Number.POSITIVE_INFINITY;
       v.edges.map((edge) => {
@@ -128,12 +128,12 @@ function addDummy(g: Graph, levels: Vertex[][]): Vertex[][] {
       const excludeEdges: Array<Edge> = [];
       v.edges.map((edge) => {
         if (edge.up != v) return;
-        let down: Vertex = edge.down;
+        const down: Vertex = edge.down;
         const nextLevel: number = down.getOptions(PY);
         let up: Vertex = v;
         if (nextLevel - currentLevel > 1) {
           for (let lvl: number = currentLevel + 1; lvl < nextLevel; lvl++) {
-            let dummpyVertex: Vertex = new Vertex(getDummyId(), { level: lvl, type: DUMMY });
+            const dummpyVertex: Vertex = new Vertex(getDummyId(), { level: lvl, type: DUMMY });
             dummyVertice.push(dummpyVertex);
             dummyEdges.push(new Edge(up, dummpyVertex));
             up = dummpyVertex;

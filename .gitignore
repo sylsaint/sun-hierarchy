@@ -65,8 +65,8 @@ typings/
 # Output of 'npm pack'
 *.tgz
 
-# Yarn Integrity file
-.yarn-integrity
+# pnpm
+pnpm-debug.log*
 
 # dotenv environment variables file
 .env

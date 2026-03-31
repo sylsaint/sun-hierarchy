@@ -2,14 +2,14 @@ import Graph, { Vertex, Edge } from '@/interface/graph';
 import { HashMap } from '@/interface/definition';
 
 export function divide(g: Graph): Graph[] {
-  let graphs: Graph[] = [];
-  let visited: HashMap = {};
+  const graphs: Graph[] = [];
+  const visited: HashMap = {};
   g.vertices.map((v) => {
     if (!visited[v.id]) {
       visited[v.id] = v;
-      let vertices: Vertex[] = [v];
-      let edges: Edge[] = [];
-      let nodes: Vertex[] = [v];
+      const vertices: Vertex[] = [v];
+      const edges: Edge[] = [];
+      const nodes: Vertex[] = [v];
       while (nodes.length) {
         const node: Vertex = nodes.shift() as Vertex;
         node.edges.map((edge) => {
@@ -26,7 +26,7 @@ export function divide(g: Graph): Graph[] {
           }
         });
       }
-      let wg: Graph = new Graph(vertices, edges, { directed: true });
+      const wg: Graph = new Graph(vertices, edges, { directed: true });
       graphs.push(wg);
     }
   });

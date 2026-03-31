@@ -1,7 +1,7 @@
 import { Vertex } from '@/interface/graph';
 
 export function edgeMatrix(ups: Array<Vertex>, downs: Array<Vertex>): Array<Array<number>> {
-  let em: Array<Array<any>> = [];
+  const em: Array<Array<any>> = [];
   ups.map((up, i) => {
     em[i] = [];
     downs.map((down, j) => {

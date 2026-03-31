@@ -3,11 +3,11 @@ import Graph, { Vertex, Edge } from '@/interface/graph';
 import { layout } from '@/algos/sugiyama';
 
 describe('Sugiyama layout with 5 vertices and 4 edges', () => {
-  let vertices: Array<Vertex> = [];
+  const vertices: Array<Vertex> = [];
   for (let i: number = 0; i < 5; i++) {
     vertices.push(new Vertex(i));
   }
-  let edges: Array<Edge> = [];
+  const edges: Array<Edge> = [];
   edges.push(new Edge(vertices[0], vertices[1]));
   edges.push(new Edge(vertices[0], vertices[3]));
   edges.push(new Edge(vertices[1], vertices[2]));

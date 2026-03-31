@@ -20,7 +20,7 @@ function cross(u: Vertex, v: Vertex, nLevel: Array<Vertex>): number {
 }
 
 function combinatorN2(vertices: Array<Vertex>): Array<Array<Vertex>> {
-  let combineList: Array<Array<Vertex>> = [];
+  const combineList: Array<Array<Vertex>> = [];
   for (let fst: number = 0; fst < vertices.length - 1; fst++) {
     for (let snd: number = fst + 1; snd < vertices.length; snd++) {
       combineList.push([vertices[fst], vertices[snd]]);
@@ -41,12 +41,12 @@ function combinatorN2(vertices: Array<Vertex>): Array<Array<Vertex>> {
  * @param: {Array<Vertex>} W vertices to construct digraph
  */
 export function penaltyGraph(W: Array<Vertex>, nLevel: Array<Vertex>): Graph {
-  let pg: Graph = new Graph([], [], { directed: true });
+  const pg: Graph = new Graph([], [], { directed: true });
   // clone W to Graph pg
   W.map((v) => {
     pg.addVertex(new Vertex(v.id));
   });
-  let combineList: Array<Array<Vertex>> = combinatorN2(W);
+  const combineList: Array<Array<Vertex>> = combinatorN2(W);
   combineList.map((vec) => {
     const penlty: number = penalty(vec[0], vec[1], nLevel);
     const upVertex = findVertexById(pg, vec[0].id);
@@ -71,7 +71,7 @@ export function penaltyGraph(W: Array<Vertex>, nLevel: Array<Vertex>): Graph {
 
 export function crossCount(W: Array<Vertex>, nLevel: Array<Vertex>): number {
   let totalCross: number = 0;
-  let combineList: Array<Array<Vertex>> = combinatorN2(W);
+  const combineList: Array<Array<Vertex>> = combinatorN2(W);
   combineList.map((vec) => {
     const xCnt: number = cross(vec[0], vec[1], nLevel);
     totalCross += xCnt;
