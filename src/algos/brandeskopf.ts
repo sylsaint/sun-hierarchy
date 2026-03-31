@@ -361,9 +361,9 @@ function getParents(v: Vertex): Vertex[] {
 
 /**
  * Improve the BK layout with multiple passes:
- *  1. Center parents over their children (bottom-up) — primary
- *  2. Center leaf nodes under their parents (top-down) — secondary
- *  3. Compact: close unnecessary gaps
+ *  1. Aggressive compaction to remove unnecessary gaps
+ *  2. Center parents over their children (bottom-up) with push support
+ *  3. Center children under their parents (top-down) with push support
  *  4. Reposition dummy nodes via linear interpolation
  *  5. Normalize: shift so min x = 0
  *
@@ -371,41 +371,147 @@ function getParents(v: Vertex): Vertex[] {
  * must maintain their relative order and minimum separation.
  */
 function improveLayout(levels: Vertex[][], spacing: number): void {
-  const MAX_ITER = 8;
+  // Phase 1: Gravity-aware packing.
+  // Place each node as close to its connected-node center as possible
+  // while respecting minimum separation and ordering constraints.
+  // This is better than tightPack because it considers connectivity.
+  gravityPack(levels, spacing);
 
-  for (let iter = 0; iter < MAX_ITER; iter++) {
-    // Bottom-up: center each node over its children.
-    // This is the primary centering pass — a parent should be centered
-    // above its children for visual clarity.
+  // Phase 2: Iterative centering — move nodes toward their connected-node
+  // centers without pushing neighbors.
+  const MAX_CENTER = 10;
+  for (let iter = 0; iter < MAX_CENTER; iter++) {
+    // Bottom-up: center parents over children
     for (let li = levels.length - 2; li >= 0; li--) {
-      centerOverChildren(levels[li], spacing);
+      centerOverChildren(levels[li], levels, spacing);
     }
-
-    // Top-down: center nodes that have NO children under their parents.
-    // Nodes with children are already positioned by the bottom-up pass;
-    // moving them again would break that centering.
+    // Top-down: center nodes under parents
     for (let li = 1; li < levels.length; li++) {
-      centerLeavesUnderParents(levels[li], spacing);
+      centerUnderParents(levels[li], levels, spacing);
     }
   }
 
-  // Compact: try to close unnecessary gaps
-  compactLayout(levels, spacing);
+  // Phase 3: Tight-pack to close all gaps, then re-center.
+  // This ensures maximum compactness.
+  tightPack(levels, spacing);
 
-  // Final centering passes after compaction
-  for (let iter = 0; iter < MAX_ITER; iter++) {
+  // Phase 4: Re-center after tight packing
+  for (let iter = 0; iter < MAX_CENTER; iter++) {
     for (let li = levels.length - 2; li >= 0; li--) {
-      centerOverChildren(levels[li], spacing);
+      centerOverChildren(levels[li], levels, spacing);
     }
     for (let li = 1; li < levels.length; li++) {
-      centerLeavesUnderParents(levels[li], spacing);
+      centerUnderParents(levels[li], levels, spacing);
     }
   }
 
-  // Reposition dummy nodes: linear interpolation between real endpoints
+  // Phase 5: Final gravity compaction to close remaining gaps
+  packWithGravity(levels, spacing);
+
+  // Phase 6: Global compaction — close gaps that span multiple levels
+  globalCompact(levels, spacing);
+
+  // Phase 7: Final centering after compaction
+  for (let iter = 0; iter < MAX_CENTER; iter++) {
+    for (let li = levels.length - 2; li >= 0; li--) {
+      centerOverChildren(levels[li], levels, spacing);
+    }
+    for (let li = 1; li < levels.length; li++) {
+      centerUnderParents(levels[li], levels, spacing);
+    }
+  }
+
+  // Phase 8: Push isolated nodes out of the way of connected nodes
+  centerWithPush(levels, spacing);
+
+  // Phase 9: Reposition dummy nodes via linear interpolation
   repositionDummyNodes(levels, spacing);
 
-  // Final normalization: shift everything so min x = 0
+  // Phase 10: Final normalization — shift everything so min x = 0
+  normalizePositions(levels);
+}
+
+/**
+ * Gravity-aware packing: place each node as close to its connected-node
+ * center as possible while respecting minimum separation constraints.
+ *
+ * For each level, we do two passes:
+ *  1. Left-to-right: place each node at max(prev + minSep, connectedCenter)
+ *  2. Right-to-left: adjust positions to also respect right-side constraints
+ *
+ * This produces a compact layout where nodes with connections are pulled
+ * toward their connected nodes, and isolated nodes are packed tightly.
+ */
+function gravityPack(levels: Vertex[][], spacing: number): void {
+  // Multiple iterations to propagate positions across levels
+  for (let iter = 0; iter < 4; iter++) {
+    for (const level of levels) {
+      if (level.length === 0) continue;
+
+      // Pass 1: Left-to-right placement
+      const positions: number[] = new Array(level.length);
+
+      // First node: place at its connected center, or 0
+      const firstCenter = connectedCenter(level[0]);
+      positions[0] = firstCenter !== null ? firstCenter : 0;
+
+      // Subsequent nodes: max(prev + minSep, connectedCenter)
+      for (let i = 1; i < level.length; i++) {
+        const sep = minSep(level[i - 1], level[i], spacing);
+        const minPos = positions[i - 1] + sep;
+        const center = connectedCenter(level[i]);
+        if (center !== null && center > minPos) {
+          positions[i] = center;
+        } else {
+          positions[i] = minPos;
+        }
+      }
+
+      // Pass 2: Right-to-left adjustment
+      // If a node is far to the right of its connected center,
+      // try to pull it (and everything to its left) leftward.
+      for (let i = level.length - 2; i >= 0; i--) {
+        const sep = minSep(level[i], level[i + 1], spacing);
+        const maxPos = positions[i + 1] - sep;
+        const center = connectedCenter(level[i]);
+
+        if (center !== null) {
+          // Try to move toward center, but don't exceed maxPos
+          const desired = Math.min(center, maxPos);
+          if (desired < positions[i]) {
+            positions[i] = desired;
+          }
+        } else {
+          // No connections: pack tightly against right neighbor
+          if (maxPos < positions[i]) {
+            positions[i] = maxPos;
+          }
+        }
+      }
+
+      // Apply positions
+      for (let i = 0; i < level.length; i++) {
+        level[i].setOptions('x', positions[i]);
+      }
+    }
+  }
+}
+
+/**
+ * Compute the center of a node's connected nodes (parents + children).
+ * Returns null if the node has no connections.
+ */
+function connectedCenter(v: Vertex): number | null {
+  const neighbors = [...getChildren(v), ...getParents(v)];
+  if (neighbors.length === 0) return null;
+  const xs = neighbors.map((n) => n.getOptions('x') as number);
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+/**
+ * Shift all nodes so that the minimum x coordinate is 0.
+ */
+function normalizePositions(levels: Vertex[][]): void {
   const allVerts = levels.flatMap((v) => v);
   const globalMinX = Math.min(...allVerts.map((v) => v.getOptions('x') as number));
   if (globalMinX !== 0) {
@@ -415,9 +521,107 @@ function improveLayout(levels: Vertex[][], spacing: number): void {
 }
 
 /**
- * Center each node on a level over its children (downstream neighbors).
+ * Pack all levels tightly with minimum separation.
+ * This is a pure left-packing that removes all unnecessary gaps.
+ * Each node is placed at exactly the minimum separation from its
+ * left neighbor, starting from position 0.
  */
-function centerOverChildren(level: Vertex[], spacing: number): void {
+function tightPack(levels: Vertex[][], spacing: number): void {
+  for (const level of levels) {
+    if (level.length === 0) continue;
+    // Place the first node at 0
+    level[0].setOptions('x', 0);
+    // Place each subsequent node at minimum separation from predecessor
+    for (let i = 1; i < level.length; i++) {
+      const prev = level[i - 1];
+      const cur = level[i];
+      const prevX = prev.getOptions('x') as number;
+      const sep = minSep(prev, cur, spacing);
+      cur.setOptions('x', prevX + sep);
+    }
+  }
+}
+
+/**
+ * Pack levels using gravity toward connected nodes.
+ * For each level, scan left-to-right and close gaps between adjacent
+ * nodes, but only shift a node left if it moves it closer to (or
+ * doesn't move it further from) the center of its connected nodes.
+ * Then scan right-to-left for the same purpose.
+ */
+function packWithGravity(levels: Vertex[][], spacing: number): void {
+  for (const level of levels) {
+    if (level.length <= 1) continue;
+
+    // Left-to-right: try to close gaps by shifting nodes left
+    for (let i = 1; i < level.length; i++) {
+      const prev = level[i - 1];
+      const cur = level[i];
+      const prevX = prev.getOptions('x') as number;
+      const curX = cur.getOptions('x') as number;
+      const sep = minSep(prev, cur, spacing);
+      const gap = curX - prevX - sep;
+      if (gap <= 0) continue;
+
+      // Compute how much we can shift left
+      const neighbors = [...getChildren(cur), ...getParents(cur)];
+      let maxShift = gap;
+      if (neighbors.length > 0) {
+        const xs = neighbors.map((n) => n.getOptions('x') as number);
+        const center = xs.reduce((a, b) => a + b, 0) / xs.length;
+        // If node is already to the left of its center, don't shift further left
+        if (curX <= center) {
+          maxShift = 0;
+        } else {
+          // Shift at most to the center
+          maxShift = Math.min(gap, curX - center);
+        }
+      }
+      if (maxShift <= 0) continue;
+
+      // Shift cur and all nodes to its right
+      for (let j = i; j < level.length; j++) {
+        level[j].setOptions('x', (level[j].getOptions('x') as number) - maxShift);
+      }
+    }
+
+    // Right-to-left: try to close gaps by shifting nodes right
+    for (let i = level.length - 2; i >= 0; i--) {
+      const cur = level[i];
+      const next = level[i + 1];
+      const curX = cur.getOptions('x') as number;
+      const nextX = next.getOptions('x') as number;
+      const sep = minSep(cur, next, spacing);
+      const gap = nextX - curX - sep;
+      if (gap <= 0) continue;
+
+      const neighbors = [...getChildren(cur), ...getParents(cur)];
+      let maxShift = gap;
+      if (neighbors.length > 0) {
+        const xs = neighbors.map((n) => n.getOptions('x') as number);
+        const center = xs.reduce((a, b) => a + b, 0) / xs.length;
+        // If node is already to the right of its center, don't shift further right
+        if (curX >= center) {
+          maxShift = 0;
+        } else {
+          maxShift = Math.min(gap, center - curX);
+        }
+      }
+      if (maxShift <= 0) continue;
+
+      // Shift cur and all nodes to its left
+      for (let j = i; j >= 0; j--) {
+        level[j].setOptions('x', (level[j].getOptions('x') as number) + maxShift);
+      }
+    }
+  }
+}
+
+/**
+ * Center each node on a level over its children (downstream neighbors).
+ * Uses soft movement: moves within available gap, no pushing.
+ */
+function centerOverChildren(level: Vertex[], _levels: Vertex[][], spacing: number): void {
   for (const v of level) {
     const children = getChildren(v);
     if (children.length === 0) continue;
@@ -428,16 +632,18 @@ function centerOverChildren(level: Vertex[], spacing: number): void {
 }
 
 /**
- * Center leaf nodes (nodes with no children) under their parents.
- * Nodes that have children are NOT moved — their position is determined
- * by the bottom-up centering pass.
+ * Center all nodes on a level under their parents (upstream neighbors).
+ * Leaf nodes get priority, non-leaf nodes use a compromise position.
  */
-function centerLeavesUnderParents(level: Vertex[], spacing: number): void {
+function centerUnderParents(level: Vertex[], _levels: Vertex[][], spacing: number): void {
+  // Center leaf nodes (no children) under their parents.
+  // Non-leaf nodes are NOT moved here — their position is primarily
+  // determined by the bottom-up centerOverChildren pass.
+  // Moving non-leaf nodes toward a parent-child compromise would break
+  // symmetry in balanced trees.
   for (const v of level) {
-    // Skip nodes that have children — they're positioned by bottom-up pass
     const children = getChildren(v);
     if (children.length > 0) continue;
-
     const parents = getParents(v);
     if (parents.length === 0) continue;
     const xs = parents.map((p) => p.getOptions('x') as number);
@@ -446,56 +652,114 @@ function centerLeavesUnderParents(level: Vertex[], spacing: number): void {
   }
 }
 
+// packLevels has been replaced by tightPack and packWithGravity above.
+
 /**
- * Compact the layout by closing unnecessary gaps. For each level, we try
- * to shift each node (and all nodes to its right) leftward to close the
- * gap with its left neighbor, but only if the shift doesn't break the
- * centering of any connected node.
+ * Global compaction: close large gaps that span multiple levels.
  *
- * This is much gentler than "push everything to x=0" — it preserves the
- * relative structure established by centering passes.
+ * Strategy: Find "vertical cut lines" where every level has a gap.
+ * For each such cut, compute the minimum gap across all levels and
+ * shift all nodes to the right of the cut leftward by that amount.
+ *
+ * A "cut" at position X means: for every level, there exists a pair
+ * of adjacent nodes (a, b) where a.x < X < b.x.
  */
-function compactLayout(levels: Vertex[][], spacing: number): void {
-  // Find the widest level — this determines the minimum total width
-  // We compact by trying to reduce gaps on each level independently.
-  for (const level of levels) {
-    for (let i = 1; i < level.length; i++) {
-      const prev = level[i - 1];
-      const cur = level[i];
-      const prevX = prev.getOptions('x') as number;
-      const curX = cur.getOptions('x') as number;
-      const sep = minSep(prev, cur, spacing);
-      const gap = curX - prevX - sep;
+function globalCompact(levels: Vertex[][], spacing: number): void {
+  const MAX_ROUNDS = 30;
 
-      if (gap <= 0) continue; // already at minimum separation
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    // Collect all "gap intervals" from all levels.
+    // A gap interval is [leftX + minSep, rightX] for each pair of adjacent nodes.
+    type GapInfo = { level: number; idx: number; leftEdge: number; rightEdge: number; excess: number };
+    const allGaps: GapInfo[] = [];
 
-      // Try to shift cur (and everything to its right) left by `gap`.
-      // But limit the shift so we don't break centering with connected nodes.
-      let maxShift = gap;
+    for (let li = 0; li < levels.length; li++) {
+      const level = levels[li];
+      for (let i = 1; i < level.length; i++) {
+        const prev = level[i - 1];
+        const cur = level[i];
+        const prevX = prev.getOptions('x') as number;
+        const curX = cur.getOptions('x') as number;
+        const sep = minSep(prev, cur, spacing);
+        const excess = curX - prevX - sep;
+        if (excess > 0.5) {
+          allGaps.push({
+            level: li,
+            idx: i,
+            leftEdge: prevX,
+            rightEdge: curX,
+            excess,
+          });
+        }
+      }
+    }
 
-      // Check: shifting cur left would move it away from its parents/children center.
-      // We allow the shift only if it moves cur closer to (or doesn't move it
-      // further from) the center of its connected nodes.
-      const neighbors = [...getChildren(cur), ...getParents(cur)];
-      if (neighbors.length > 0) {
-        const xs = neighbors.map((n) => n.getOptions('x') as number);
-        const center = (Math.min(...xs) + Math.max(...xs)) / 2;
-        const curDist = Math.abs(curX - center);
-        const newDist = Math.abs(curX - maxShift - center);
-        // Only shift if it brings us closer to center or keeps same distance
-        if (newDist > curDist + 1) {
-          // Shifting would move us further from center; limit shift
-          maxShift = Math.max(0, curX - center - (center - (prevX + sep)));
-          if (maxShift < 0) maxShift = 0;
+    if (allGaps.length === 0) break;
+
+    // For each gap, try to find a "vertical cut" that passes through
+    // gaps on ALL levels. The cut position is defined by the gap's interval.
+    // We try each gap as a candidate cut and check all other levels.
+    let bestShift = 0;
+    let bestCutX = 0;
+
+    for (const gap of allGaps) {
+      // The cut interval is [gap.leftEdge, gap.rightEdge]
+      const cutLeft = gap.leftEdge;
+      const cutRight = gap.rightEdge;
+
+      // For each level, find the minimum excess gap that overlaps with this cut interval
+      let minExcess = gap.excess;
+      let validCut = true;
+
+      for (let li = 0; li < levels.length; li++) {
+        const level = levels[li];
+        // Find the gap on this level that contains the cut interval
+        let foundGap = false;
+        for (let i = 1; i < level.length; i++) {
+          const prevX = level[i - 1].getOptions('x') as number;
+          const curX = level[i].getOptions('x') as number;
+          // Check if this gap overlaps with the cut interval
+          if (prevX <= cutRight && curX >= cutLeft) {
+            const sep = minSep(level[i - 1], level[i], spacing);
+            const excess = curX - prevX - sep;
+            minExcess = Math.min(minExcess, excess);
+            foundGap = true;
+            break;
+          }
+        }
+        if (!foundGap) {
+          // This level has no gap at this position — check if all nodes
+          // are to the left or right of the cut
+          const levelXs = level.map((v) => v.getOptions('x') as number);
+          const maxX = Math.max(...levelXs);
+          const minX = Math.min(...levelXs);
+          if (maxX <= cutLeft || minX >= cutRight) {
+            // All nodes on this level are on one side — cut is valid
+            continue;
+          }
+          // There's a node at the cut position — cut is invalid
+          validCut = false;
+          break;
         }
       }
 
-      if (maxShift <= 0) continue;
+      if (!validCut || minExcess <= 0.5) continue;
 
-      // Shift cur and all nodes to its right on this level
-      for (let j = i; j < level.length; j++) {
-        const v = level[j];
-        v.setOptions('x', (v.getOptions('x') as number) - maxShift);
+      if (minExcess > bestShift) {
+        bestShift = minExcess;
+        bestCutX = (cutLeft + cutRight) / 2;
+      }
+    }
+
+    if (bestShift <= 0.5) break;
+
+    // Apply the shift: move all nodes to the right of bestCutX leftward
+    for (const level of levels) {
+      for (const v of level) {
+        const vx = v.getOptions('x') as number;
+        if (vx > bestCutX) {
+          v.setOptions('x', vx - bestShift);
+        }
       }
     }
   }
@@ -504,15 +768,15 @@ function compactLayout(levels: Vertex[][], spacing: number): void {
 /**
  * Try to move vertex `v` to `desiredX` on its level, respecting ordering
  * constraints and minimum separations with neighbors.
+ * Non-pushing: the node can only move within the gap between its neighbors.
  */
 function tryMove(v: Vertex, desiredX: number, level: Vertex[], spacing: number): void {
   const idx = level.indexOf(v);
   if (idx < 0) return;
 
   const curX = v.getOptions('x') as number;
-  if (Math.abs(desiredX - curX) < 0.5) return; // negligible move
+  if (Math.abs(desiredX - curX) < 0.5) return;
 
-  // Compute the allowed range [lo, hi] for v's x-coordinate
   let lo = -Infinity;
   let hi = Infinity;
 
@@ -530,6 +794,157 @@ function tryMove(v: Vertex, desiredX: number, level: Vertex[], spacing: number):
 }
 
 /**
+ * Try to move vertex `v` to `desiredX`, pushing isolated neighbors
+ * (nodes with no connections to adjacent levels) out of the way.
+ * Connected neighbors are never pushed.
+ */
+function tryMoveWithPush(v: Vertex, desiredX: number, level: Vertex[], spacing: number): void {
+  const idx = level.indexOf(v);
+  if (idx < 0) return;
+
+  const curX = v.getOptions('x') as number;
+  if (Math.abs(desiredX - curX) < 0.5) return;
+
+  // Determine movement direction
+  const movingRight = desiredX > curX;
+
+  if (movingRight) {
+    // Push isolated nodes to the right
+    // First, find the chain of isolated nodes blocking us
+    let targetX = desiredX;
+    for (let i = idx + 1; i < level.length; i++) {
+      const neighbor = level[i];
+      const neighborX = neighbor.getOptions('x') as number;
+      const sep = minSep(level[i - 1], neighbor, spacing);
+      const requiredX = (i === idx + 1 ? targetX : (level[i - 1].getOptions('x') as number)) + sep;
+      if (neighborX >= requiredX) break; // no conflict
+      // Only push if neighbor is isolated (no connections)
+      const neighborConnected = [...getChildren(neighbor), ...getParents(neighbor)];
+      if (neighborConnected.length > 0) {
+        // Can't push connected node; clamp our target
+        targetX = neighborX - minSep(v, neighbor, spacing);
+        // Also clamp for intermediate nodes
+        for (let j = i - 1; j > idx; j--) {
+          const sepJ = minSep(level[j], level[j + 1], spacing);
+          const maxJ = (level[j + 1].getOptions('x') as number) - sepJ;
+          if ((level[j].getOptions('x') as number) > maxJ) {
+            level[j].setOptions('x', maxJ);
+          }
+        }
+        break;
+      }
+      neighbor.setOptions('x', requiredX);
+    }
+    // Recompute our actual target after pushing
+    let hi = Infinity;
+    if (idx < level.length - 1) {
+      hi = (level[idx + 1].getOptions('x') as number) - minSep(v, level[idx + 1], spacing);
+    }
+    let lo = -Infinity;
+    if (idx > 0) {
+      lo = (level[idx - 1].getOptions('x') as number) + minSep(level[idx - 1], v, spacing);
+    }
+    v.setOptions('x', Math.max(lo, Math.min(hi, targetX)));
+  } else {
+    // Push isolated nodes to the left
+    let targetX = desiredX;
+    for (let i = idx - 1; i >= 0; i--) {
+      const neighbor = level[i];
+      const neighborX = neighbor.getOptions('x') as number;
+      const sep = minSep(neighbor, level[i + 1], spacing);
+      const requiredX = (i === idx - 1 ? targetX : (level[i + 1].getOptions('x') as number)) - sep;
+      if (neighborX <= requiredX) break; // no conflict
+      const neighborConnected = [...getChildren(neighbor), ...getParents(neighbor)];
+      if (neighborConnected.length > 0) {
+        targetX = neighborX + minSep(neighbor, v, spacing);
+        for (let j = i + 1; j < idx; j++) {
+          const sepJ = minSep(level[j - 1], level[j], spacing);
+          const minJ = (level[j - 1].getOptions('x') as number) + sepJ;
+          if ((level[j].getOptions('x') as number) < minJ) {
+            level[j].setOptions('x', minJ);
+          }
+        }
+        break;
+      }
+      neighbor.setOptions('x', requiredX);
+    }
+    let lo = -Infinity;
+    if (idx > 0) {
+      lo = (level[idx - 1].getOptions('x') as number) + minSep(level[idx - 1], v, spacing);
+    }
+    let hi = Infinity;
+    if (idx < level.length - 1) {
+      hi = (level[idx + 1].getOptions('x') as number) - minSep(v, level[idx + 1], spacing);
+    }
+    v.setOptions('x', Math.max(lo, Math.min(hi, targetX)));
+  }
+}
+
+/**
+ * Center connected nodes over their children/parents, pushing isolated
+ * neighbors out of the way. This ensures that nodes with no connections
+ * don't block connected nodes from reaching their ideal positions.
+ *
+ * IMPORTANT: Only pushes when the blocking neighbor is truly isolated
+ * (no connections to any adjacent level). This avoids breaking symmetry
+ * in layouts where all nodes are connected.
+ */
+function centerWithPush(levels: Vertex[][], spacing: number): void {
+  // Build a set of nodes that are isolated (no connections to adjacent levels)
+  const isolatedSet = new Set<Vertex>();
+  for (let li = 0; li < levels.length; li++) {
+    for (const v of levels[li]) {
+      const children = getChildren(v);
+      const parents = getParents(v);
+      if (children.length === 0 && parents.length === 0) {
+        isolatedSet.add(v);
+      }
+    }
+  }
+
+  // If there are no isolated nodes at all, skip entirely to preserve symmetry
+  if (isolatedSet.size === 0) return;
+
+  // Only process levels that actually contain isolated nodes
+  const levelsWithIsolated = new Set<number>();
+  for (let li = 0; li < levels.length; li++) {
+    for (const v of levels[li]) {
+      if (isolatedSet.has(v)) {
+        levelsWithIsolated.add(li);
+        break;
+      }
+    }
+  }
+
+  // Bottom-up: center parents over children, pushing isolated neighbors
+  for (let li = levels.length - 2; li >= 0; li--) {
+    if (!levelsWithIsolated.has(li)) continue; // skip levels without isolated nodes
+    const level = levels[li];
+    for (const v of level) {
+      if (isolatedSet.has(v)) continue; // don't move isolated nodes proactively
+      const children = getChildren(v);
+      if (children.length === 0) continue;
+      const xs = children.map((c) => c.getOptions('x') as number);
+      const desiredX = (Math.min(...xs) + Math.max(...xs)) / 2;
+      tryMoveWithPush(v, desiredX, level, spacing);
+    }
+  }
+  // Top-down: center nodes under parents, pushing isolated neighbors
+  for (let li = 1; li < levels.length; li++) {
+    if (!levelsWithIsolated.has(li)) continue; // skip levels without isolated nodes
+    const level = levels[li];
+    for (const v of level) {
+      if (isolatedSet.has(v)) continue;
+      const parents = getParents(v);
+      if (parents.length === 0) continue;
+      const xs = parents.map((p) => p.getOptions('x') as number);
+      const desiredX = (Math.min(...xs) + Math.max(...xs)) / 2;
+      tryMoveWithPush(v, desiredX, level, spacing);
+    }
+  }
+}
+
+/**
  * Reposition dummy nodes via linear interpolation between their real
  * source and target endpoints. This makes long-span edges as straight
  * as possible and prevents dummy nodes from wasting horizontal space.
@@ -540,10 +955,10 @@ function repositionDummyNodes(levels: Vertex[][], spacing: number): void {
   allVertices.forEach((v) => {
     if (v.getOptions('type') !== DUMMY) return;
 
-    // Walk up to find the real source node
     let source: Vertex | null = null;
     let cur: Vertex = v;
-    while (true) {
+    let safety = 100;
+    while (safety-- > 0) {
       const upEdges = cur.edges.filter((e) => e.down === cur || e.down.id === cur.id);
       if (upEdges.length === 0) break;
       const parent = upEdges[0].up;
@@ -554,10 +969,10 @@ function repositionDummyNodes(levels: Vertex[][], spacing: number): void {
       cur = parent;
     }
 
-    // Walk down to find the real target node
     let target: Vertex | null = null;
     cur = v;
-    while (true) {
+    safety = 100;
+    while (safety-- > 0) {
       const downEdges = cur.edges.filter((e) => e.up === cur || e.up.id === cur.id);
       if (downEdges.length === 0) break;
       const child = downEdges[0].down;
@@ -582,7 +997,7 @@ function repositionDummyNodes(levels: Vertex[][], spacing: number): void {
     const t = (curLevel - srcLevel) / (tgtLevel - srcLevel);
     const desiredX = srcX + t * (tgtX - srcX);
 
-    // Move dummy to interpolated position, respecting neighbor constraints
+    // Move dummy to interpolated position, non-pushing
     const level = levels[curLevel];
     tryMove(v, desiredX, level, spacing);
   });

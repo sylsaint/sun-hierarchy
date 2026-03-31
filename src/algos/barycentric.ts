@@ -430,5 +430,164 @@ export function baryCentric(levels: Vertex[][], options: BaryCentricOptions = {}
     return { levels: [row, col], crossCount };
   }
   const { levels: orderedLevels, totalCross } = calcMulLevelbaryCentric(levels, options);
+
+  // Post-processing: try to move nodes closer to their connected-node
+  // median position without increasing the total crossing count.
+  // This improves layout compactness for nodes whose barycentric
+  // coefficient doesn't reflect their ideal position (e.g., root nodes
+  // with no parents that get placed at position 0).
+  const improvedLevels = improveOrdering(orderedLevels);
+  const improvedCross = totalCrossCount(improvedLevels);
+
+  if (improvedCross <= totalCross) {
+    return { levels: improvedLevels, crossCount: improvedCross };
+  }
   return { levels: orderedLevels, crossCount: totalCross };
+}
+
+/**
+ * Compute total crossing count across all adjacent level pairs.
+ */
+function totalCrossCount(levels: Vertex[][]): number {
+  let total = 0;
+  for (let i = 0; i < levels.length - 1; i++) {
+    total += crossCount(levels[i], levels[i + 1]);
+  }
+  return total;
+}
+
+/**
+ * Post-processing step: try to move nodes to positions closer to their
+ * connected-node median, without increasing the total crossing count.
+ *
+ * For each level, we identify nodes that are far from their "ideal"
+ * position (the median position of their connected nodes on adjacent levels).
+ * We then try moving each such node to a better position and accept the
+ * move only if it doesn't increase crossings.
+ *
+ * This is a greedy heuristic that runs in O(L * N^2) where L is the
+ * number of levels and N is the max level width.
+ */
+function improveOrdering(levels: Vertex[][]): Vertex[][] {
+  const result = levels.map((l) => [...l]);
+  const MAX_PASSES = 3;
+
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    let improved = false;
+
+    for (let li = 0; li < result.length; li++) {
+      // Collect all candidate moves for this level
+      const candidates: { node: Vertex; fromIdx: number; toIdx: number }[] = [];
+
+      for (let i = 0; i < result[li].length; i++) {
+        const node = result[li][i];
+        const idealIdx = computeIdealIndex(node, result[li], result, li);
+        if (idealIdx !== null && idealIdx !== i) {
+          candidates.push({ node, fromIdx: i, toIdx: idealIdx });
+        }
+      }
+
+      // Sort candidates by distance to ideal (largest first) for greedy selection
+      candidates.sort((a, b) => Math.abs(b.toIdx - b.fromIdx) - Math.abs(a.toIdx - a.fromIdx));
+
+      // Try each candidate move
+      for (const { node, fromIdx, toIdx } of candidates) {
+        const level = result[li];
+        const currentIdx = level.indexOf(node);
+        if (currentIdx < 0 || currentIdx === toIdx) continue;
+
+        const currentCross = levelPairCross(result, li);
+
+        // Create moved array
+        const moved = [...level];
+        moved.splice(currentIdx, 1);
+        const insertIdx = toIdx > currentIdx ? toIdx - 1 : toIdx;
+        moved.splice(Math.min(insertIdx, moved.length), 0, node);
+
+        // Test the move
+        result[li] = moved;
+        const newCross = levelPairCross(result, li);
+
+        if (newCross <= currentCross) {
+          improved = true;
+          // Keep the move, continue with next candidate
+        } else {
+          // Reject the move
+          result[li] = level;
+        }
+      }
+    }
+
+    if (!improved) break;
+  }
+
+  return result;
+}
+
+/**
+ * Compute the crossing count for all level pairs that include level li.
+ */
+function levelPairCross(levels: Vertex[][], li: number): number {
+  let total = 0;
+  if (li > 0) {
+    total += crossCount(levels[li - 1], levels[li]);
+  }
+  if (li < levels.length - 1) {
+    total += crossCount(levels[li], levels[li + 1]);
+  }
+  return total;
+}
+
+/**
+ * Compute the ideal position index for a node on its level,
+ * based on the median position of its connected nodes on adjacent levels.
+ *
+ * Returns null if the node has no connections or is already at its ideal position.
+ */
+function computeIdealIndex(node: Vertex, level: Vertex[], levels: Vertex[][], li: number): number | null {
+  // Collect positions of connected nodes on adjacent levels
+  const connectedPositions: number[] = [];
+
+  // Children (downstream)
+  const children = node.edges.filter((e) => e.up.id === node.id).map((e) => e.down);
+
+  if (li < levels.length - 1) {
+    const nextLevel = levels[li + 1];
+    for (const child of children) {
+      const idx = nextLevel.indexOf(child);
+      if (idx >= 0) connectedPositions.push(idx / Math.max(1, nextLevel.length - 1));
+    }
+  }
+
+  // Parents (upstream)
+  const parents = node.edges.filter((e) => e.down.id === node.id).map((e) => e.up);
+
+  if (li > 0) {
+    const prevLevel = levels[li - 1];
+    for (const parent of parents) {
+      const idx = prevLevel.indexOf(parent);
+      if (idx >= 0) connectedPositions.push(idx / Math.max(1, prevLevel.length - 1));
+    }
+  }
+
+  if (connectedPositions.length === 0) return null;
+
+  // Compute median relative position
+  connectedPositions.sort((a, b) => a - b);
+  const len = connectedPositions.length;
+  let medianRel: number;
+  if (len % 2 === 1) {
+    medianRel = connectedPositions[(len - 1) / 2];
+  } else {
+    medianRel = (connectedPositions[len / 2 - 1] + connectedPositions[len / 2]) / 2;
+  }
+
+  // Convert relative position to absolute index
+  const idealIdx = Math.round(medianRel * (level.length - 1));
+
+  // Only return if it's different from current position
+  const currentIdx = level.indexOf(node);
+  if (idealIdx === currentIdx) return null;
+
+  return idealIdx;
 }

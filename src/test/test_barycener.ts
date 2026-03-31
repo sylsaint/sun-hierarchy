@@ -3,8 +3,10 @@ import Graph, { Vertex, Edge } from '@/interface/graph';
 import { baryCentric } from '@/algos/barycentric';
 import { brandeskopf } from '@/algos/brandeskopf';
 import { vegetables } from './data/data';
+import { data2 } from './data/data2';
 import { printLayoutResult } from '@/utils/printer';
 import { saveSvg } from './helpers/svg';
+import { layout } from '@/algos/sugiyama';
 
 describe('BaryCentric Method', () => {
   const vertices: Array<Vertex> = [];
@@ -207,5 +209,52 @@ describe('BaryCentric Method', () => {
     printLayoutResult(nLevels, 'BaryCentric Crossings=0');
     saveSvg(nLevels, 'barycentric_crossings_0', 'BaryCentric Crossings=0');
     expect(crossCount).equal(0);
+  });
+});
+
+// Helper: extract levels from a laid-out graph
+function getLevelsFromGraph(g: Graph): Vertex[][] {
+  const levelMap: { [key: number]: Vertex[] } = {};
+  g.vertices.map((v) => {
+    const level = v.getOptions('level') ?? v.getOptions('_y') ?? 0;
+    if (!levelMap[level]) levelMap[level] = [];
+    levelMap[level].push(v);
+  });
+  const sortedKeys = Object.keys(levelMap)
+    .map(Number)
+    .sort((a, b) => a - b);
+  return sortedKeys.map((k) => {
+    const verts = levelMap[k];
+    verts.sort((a, b) => (a.getOptions('x') ?? 0) - (b.getOptions('x') ?? 0));
+    return verts;
+  });
+}
+
+describe('Industry Opportunity Insight DAG Layout', () => {
+  const vertices: Array<Vertex> = [];
+  const vertexMap: { [key: string]: Vertex } = {};
+  data2.tasks.map((task) => {
+    const vertex = new Vertex(task.taskId);
+    vertices.push(vertex);
+    vertexMap[task.taskId] = vertex;
+  });
+
+  const edges: Array<Edge> = [];
+  data2.links.map((link) => {
+    edges.push(new Edge(vertexMap[link.taskFrom], vertexMap[link.taskTo]));
+  });
+
+  const g: Graph = new Graph(vertices, edges, { directed: true });
+
+  it('Should layout the Industry Opportunity Insight DAG', () => {
+    const graphs: Array<Graph> = layout(g);
+    // The graph may contain isolated nodes (no edges), so expect at least 1 sub-graph
+    expect(graphs.length).to.be.greaterThan(0);
+
+    graphs.map((g, idx) => {
+      const levels = getLevelsFromGraph(g);
+      printLayoutResult(levels, `Industry DAG Sub-graph ${idx + 1} (${g.vertices.length} vertices)`);
+      saveSvg(levels, `industry_dag_subgraph_${idx + 1}`, `Industry DAG Sub-graph ${idx + 1}`);
+    });
   });
 });
