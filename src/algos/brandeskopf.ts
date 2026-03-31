@@ -309,7 +309,12 @@ function placeBlock(vid: string | number, options: BlockOptions): VertexIdNumber
   return xcoords;
 }
 
-function balance(levels: Vertex[][], xss: VertexIdNumberMap[], options: LayoutOptions): Vertex[][] {
+function balance(
+  levels: Vertex[][],
+  xss: VertexIdNumberMap[],
+  options: LayoutOptions,
+  baselineCrossings: number = 0,
+): Vertex[][] {
   const { width, height, gutter = 0, margin = { left: 0, top: 0 } } = options;
   const { left = 0, top = 0 } = margin;
   const spacing = width + gutter;
@@ -331,6 +336,9 @@ function balance(levels: Vertex[][], xss: VertexIdNumberMap[], options: LayoutOp
 
   // Step 2: Improve layout with centering and compaction passes
   improveLayout(levels, spacing);
+
+  // Step 3: Local reordering within crossing budget for better aesthetics
+  localReorderWithinBudget(levels, spacing, baselineCrossings);
 
   return levels;
 }
@@ -1003,6 +1011,273 @@ function repositionDummyNodes(levels: Vertex[][], spacing: number): void {
   });
 }
 
+// ─── Crossing count utilities for BK phase ───
+
+/**
+ * Count crossings between two adjacent levels based on current x-coordinates.
+ * Two edges (u1→v1) and (u2→v2) cross iff (x(u1)-x(u2)) and (x(v1)-x(v2))
+ * have opposite signs.
+ */
+function countCrossingsXBased(upper: Vertex[], lower: Vertex[]): number {
+  // Collect all edges between these two levels
+  type EdgePair = { ux: number; lx: number };
+  const edges: EdgePair[] = [];
+  for (const u of upper) {
+    const ux = u.getOptions('x') as number;
+    for (const e of u.edges) {
+      if (e.up === u || e.up.id === u.id) {
+        if (lower.includes(e.down)) {
+          edges.push({ ux, lx: e.down.getOptions('x') as number });
+        }
+      }
+    }
+  }
+  // Count inversions: pairs where edges cross
+  let crossings = 0;
+  for (let i = 0; i < edges.length; i++) {
+    for (let j = i + 1; j < edges.length; j++) {
+      const a = edges[i];
+      const b = edges[j];
+      if ((a.ux - b.ux) * (a.lx - b.lx) < 0) {
+        crossings++;
+      }
+    }
+  }
+  return crossings;
+}
+
+/**
+ * Compute total crossings across all adjacent level pairs using x-coordinates.
+ */
+function totalCrossingsXBased(levels: Vertex[][]): number {
+  let total = 0;
+  for (let i = 0; i < levels.length - 1; i++) {
+    total += countCrossingsXBased(levels[i], levels[i + 1]);
+  }
+  return total;
+}
+
+// ─── Layout quality scoring ───
+
+/**
+ * Compute a layout quality score (lower is better).
+ * Considers:
+ *  - Total edge length (sum of |x_parent - x_child| for all edges)
+ *  - Alignment quality (how well parents are centered over children)
+ *  - Compactness (total width of the layout)
+ */
+function layoutQualityScore(levels: Vertex[][]): number {
+  let totalEdgeLength = 0;
+  let totalAlignmentError = 0;
+
+  for (const level of levels) {
+    for (const v of level) {
+      const vx = v.getOptions('x') as number;
+      const children = getChildren(v);
+      const parents = getParents(v);
+
+      // Edge length: sum of horizontal distances to children
+      for (const c of children) {
+        const cx = c.getOptions('x') as number;
+        totalEdgeLength += Math.abs(vx - cx);
+      }
+
+      // Alignment: distance from center of children
+      if (children.length > 0) {
+        const xs = children.map((c) => c.getOptions('x') as number);
+        const center = (Math.min(...xs) + Math.max(...xs)) / 2;
+        totalAlignmentError += Math.abs(vx - center);
+      }
+
+      // Alignment: distance from center of parents
+      if (parents.length > 0) {
+        const xs = parents.map((p) => p.getOptions('x') as number);
+        const center = (Math.min(...xs) + Math.max(...xs)) / 2;
+        totalAlignmentError += Math.abs(vx - center);
+      }
+    }
+  }
+
+  // Compactness: total width
+  const allX = levels.flatMap((l) => l.map((v) => v.getOptions('x') as number));
+  const totalWidth = allX.length > 0 ? Math.max(...allX) - Math.min(...allX) : 0;
+
+  // Weighted combination (lower is better)
+  return totalEdgeLength + totalAlignmentError * 2 + totalWidth * 0.5;
+}
+
+// ─── Local reordering within crossing budget ───
+
+/**
+ * The maximum ratio of crossing increase allowed relative to baseline.
+ * E.g., 0.2 means we allow up to 20% more crossings than the baseline.
+ * For baseline=0, we allow up to MAX_ABSOLUTE_CROSSING_INCREASE additional crossings.
+ */
+const CROSSING_BUDGET_RATIO = 0.2;
+const MAX_ABSOLUTE_CROSSING_INCREASE = 1;
+
+/**
+ * Local reordering: try swapping adjacent nodes on each level to improve
+ * layout aesthetics (compactness, alignment, symmetry), accepting swaps
+ * that increase crossings as long as the total crossing count stays within
+ * the budget (baseline * (1 + CROSSING_BUDGET_RATIO)).
+ *
+ * After each accepted swap, re-run the coordinate optimization passes
+ * to get the best possible layout for the new ordering.
+ *
+ * This bridges the gap between the ordering phase (minimize crossings)
+ * and the coordinate phase (maximize aesthetics), allowing a controlled
+ * trade-off between the two objectives.
+ */
+function localReorderWithinBudget(levels: Vertex[][], spacing: number, baselineCrossings: number): void {
+  // Compute the crossing budget
+  const maxAllowedCrossings =
+    baselineCrossings === 0
+      ? MAX_ABSOLUTE_CROSSING_INCREASE
+      : Math.ceil(baselineCrossings * (1 + CROSSING_BUDGET_RATIO));
+
+  // Save the initial state
+  const initialCrossings = totalCrossingsXBased(levels);
+
+  // If current crossings already exceed budget (shouldn't happen), skip
+  if (initialCrossings > maxAllowedCrossings) return;
+
+  const MAX_PASSES = 2;
+
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    let improved = false;
+
+    for (let li = 0; li < levels.length; li++) {
+      const level = levels[li];
+      if (level.length <= 1) continue;
+
+      for (let i = 0; i < level.length - 1; i++) {
+        const a = level[i];
+        const b = level[i + 1];
+
+        // Skip dummy nodes — their position is determined by interpolation
+        if (a.getOptions('type') === DUMMY || b.getOptions('type') === DUMMY) continue;
+
+        // Quick crossing check: swap and count crossings BEFORE re-optimizing
+        // This avoids expensive coordinate re-optimization for swaps that
+        // would exceed the crossing budget anyway.
+        level[i] = b;
+        level[i + 1] = a;
+        const quickCrossings = totalCrossingsXBased(levels);
+        if (quickCrossings > maxAllowedCrossings) {
+          // Swap back immediately — crossing budget exceeded
+          level[i] = a;
+          level[i + 1] = b;
+          continue;
+        }
+
+        // Save current positions and score
+        const savedPositions = savePositions(levels);
+        level[i] = a;
+        level[i + 1] = b;
+        const currentScore = layoutQualityScore(levels);
+
+        // Now do the actual swap with coordinate re-optimization
+        level[i] = b;
+        level[i + 1] = a;
+        reoptimizeCoordinates(levels, spacing);
+
+        // Verify crossings are still within budget after re-optimization
+        const newCrossings = totalCrossingsXBased(levels);
+        const newScore = layoutQualityScore(levels);
+
+        // Accept the swap if:
+        // 1. Crossings are within budget
+        // 2. Layout quality improved (score decreased)
+        // 3. Quality improvement is significant enough (> 1% or > 1 unit)
+        const qualityImproved = newScore < currentScore - Math.max(currentScore * 0.01, 1);
+
+        if (newCrossings <= maxAllowedCrossings && qualityImproved) {
+          // Accept the swap
+          improved = true;
+          // Update prev/next pointers for the swapped nodes
+          updatePrevNext(levels);
+        } else {
+          // Reject the swap — restore everything
+          level[i] = a;
+          level[i + 1] = b;
+          restorePositions(levels, savedPositions);
+        }
+      }
+    }
+
+    if (!improved) break;
+  }
+}
+
+/**
+ * Save x positions of all vertices.
+ */
+function savePositions(levels: Vertex[][]): Map<Vertex, number> {
+  const saved = new Map<Vertex, number>();
+  for (const level of levels) {
+    for (const v of level) {
+      saved.set(v, v.getOptions('x') as number);
+    }
+  }
+  return saved;
+}
+
+/**
+ * Restore x positions of all vertices.
+ */
+function restorePositions(levels: Vertex[][], saved: Map<Vertex, number>): void {
+  for (const level of levels) {
+    for (const v of level) {
+      const x = saved.get(v);
+      if (x !== undefined) v.setOptions('x', x);
+    }
+  }
+}
+
+/**
+ * Update prev/next pointers after a swap.
+ */
+function updatePrevNext(levels: Vertex[][]): void {
+  for (const level of levels) {
+    for (let i = 0; i < level.length; i++) {
+      level[i].setOptions('pos', i);
+      level[i].setOptions('prev', level[i - 1]?.id);
+      level[i].setOptions('next', level[i + 1]?.id);
+    }
+  }
+}
+
+/**
+ * Re-run coordinate optimization passes after a node swap.
+ * This is a lighter version of improveLayout that focuses on
+ * centering and compaction without the full pipeline.
+ */
+function reoptimizeCoordinates(levels: Vertex[][], spacing: number): void {
+  // Tight pack first to establish baseline positions
+  tightPack(levels, spacing);
+
+  // Gravity-aware packing
+  gravityPack(levels, spacing);
+
+  // Iterative centering (reduced iterations for performance)
+  const MAX_CENTER = 4;
+  for (let iter = 0; iter < MAX_CENTER; iter++) {
+    for (let li = levels.length - 2; li >= 0; li--) {
+      centerOverChildren(levels[li], levels, spacing);
+    }
+    for (let li = 1; li < levels.length; li++) {
+      centerUnderParents(levels[li], levels, spacing);
+    }
+  }
+
+  // Final gravity compaction
+  packWithGravity(levels, spacing);
+
+  // Normalize
+  normalizePositions(levels);
+}
+
 function normalize(xcoords: VertexIdNumberMap, reversed = false): { xcoords: VertexIdNumberMap; width: number } {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
@@ -1022,7 +1297,11 @@ function normalize(xcoords: VertexIdNumberMap, reversed = false): { xcoords: Ver
   return { xcoords, width };
 }
 
-export function brandeskopf(levels: Vertex[][], layoutOptions: LayoutOptions = defaultOptions) {
+export function brandeskopf(
+  levels: Vertex[][],
+  layoutOptions: LayoutOptions = defaultOptions,
+  baselineCrossings: number = 0,
+) {
   const vertexMap = preprocess(levels);
   const conflicts = markConflicts(levels);
   const xss: { xcoords: VertexIdNumberMap; width: number }[] = [];
@@ -1038,5 +1317,5 @@ export function brandeskopf(levels: Vertex[][], layoutOptions: LayoutOptions = d
     });
   });
   const minWidthXss = xss.map((xs) => xs.xcoords);
-  return balance(levels, minWidthXss, layoutOptions);
+  return balance(levels, minWidthXss, layoutOptions, baselineCrossings);
 }

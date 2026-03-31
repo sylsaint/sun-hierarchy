@@ -31,8 +31,8 @@ export function layout(g: Graph, options = defaultOptions): Graph[] {
   const { width, gutter = 0 } = mergedOptions;
   graphs.map((subGraph) => {
     const levels: Vertex[][] = makeHierarchy(subGraph);
-    const { levels: orderedLevels } = baryCentric(levels, {});
-    brandeskopf(orderedLevels, mergedOptions);
+    const { levels: orderedLevels, crossCount } = baryCentric(levels, {});
+    brandeskopf(orderedLevels, mergedOptions, crossCount);
     const maxWidth: number = Math.max.apply(
       null,
       orderedLevels.flatMap((vertices) => vertices).map((v) => v.getOptions('x')),
