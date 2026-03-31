@@ -51,30 +51,3 @@ export function printVertexNeighbours(g: Graph) {
 export function getDummyId() {
   return uuidv4();
 }
-
-export function printVertices(levels: Vertex[][]) {
-  let maxWidth = 0;
-  levels
-    .flatMap((vertices) => vertices)
-    .map((v) => {
-      if (v.getOptions('x') > maxWidth) maxWidth = v.getOptions('x');
-    });
-  levels.map((vertices) => {
-    let formatted = '';
-    vertices.map((v, idx) => {
-      if (idx === 0) {
-        const spaces = (v.getOptions('x') * 50) / maxWidth;
-        for (let i = 0; i < spaces; i++) {
-          formatted += ' ';
-        }
-      } else {
-        const spaces = ((v.getOptions('x') - vertices[idx - 1].getOptions('x')) * 50) / maxWidth || 1;
-        for (let i = 0; i < spaces; i++) {
-          formatted += ' ';
-        }
-      }
-      formatted += v.id;
-    });
-    console.log(formatted + '\n');
-  });
-}

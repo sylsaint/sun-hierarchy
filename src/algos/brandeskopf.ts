@@ -22,7 +22,10 @@ function getNext(vertex: Vertex, reversed = false): number {
 }
 
 function getDownMedianNeighborPos(vertex: Vertex, min: number): number {
-  const neighbors = vertex.edges.filter((edge) => edge.up.id === vertex.id).map((edge) => edge.down);
+  const neighbors = vertex.edges
+    .filter((edge) => edge.up.id === vertex.id)
+    .map((edge) => edge.down)
+    .sort((a, b) => a.getOptions('pos') - b.getOptions('pos'));
   const highs = neighbors.filter((v) => v.getOptions('pos') >= min);
   if (highs.length) return highs[0].getOptions('pos');
   if (neighbors.length) return neighbors[0].getOptions('pos');
@@ -101,6 +104,8 @@ function getUpperMedianNeighbors(vertex: Vertex, verticalOrder = true, horizonOr
   let upperNeighbours = vertex.edges.filter((edge) => edge.down.id === vertex.id).map((edge) => edge.up);
   if (!verticalOrder)
     upperNeighbours = vertex.edges.filter((edge) => edge.up.id === vertex.id).map((edge) => edge.down);
+  // Sort neighbors by their position - critical for correct median computation
+  upperNeighbours.sort((a, b) => a.getOptions('pos') - b.getOptions('pos'));
   const upperLength = upperNeighbours.length;
   if (upperLength === 0) return [];
   if (upperLength % 2 === 1) return [upperNeighbours[(upperLength - 1) / 2]];
@@ -310,8 +315,16 @@ function balance(levels: Vertex[][], xss: VertexIdNumberMap[], options: LayoutOp
   levels
     .flatMap((vertices) => vertices)
     .map((v) => {
-      const posList: number[] = xss.map((map) => map[v.id]);
-      const xs: number = posList.reduce((prev, cur) => prev + cur, 0) / posList.length;
+      const posList: number[] = xss.map((map) => map[v.id]).sort((a, b) => a - b);
+      // Use median of the 4 alignments instead of average for better robustness
+      // with multi-parent nodes. Median is less sensitive to outlier alignments.
+      const len = posList.length;
+      let xs: number;
+      if (len % 2 === 0) {
+        xs = (posList[len / 2 - 1] + posList[len / 2]) / 2;
+      } else {
+        xs = posList[(len - 1) / 2];
+      }
       v.setOptions('x', left + xs * (width + gutter));
       v.setOptions('y', top + v.getOptions('level') * (height + gutter));
     });

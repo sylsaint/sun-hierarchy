@@ -1,7 +1,8 @@
 import Graph, { Vertex, Edge } from '@/interface/graph';
 import { markConflicts, alignVertices, brandeskopf } from '@/algos/brandeskopf';
 import { DUMMY } from '@/interface/constant';
-import { printVertices } from '@/utils/graph';
+import { printLayoutResult, printPositionTable } from '@/utils/printer';
+import { saveSvg } from './helpers/svg';
 
 describe('Position layout bk new', () => {
   const vertices: Array<Vertex> = [];
@@ -104,9 +105,9 @@ describe('Position layout bk new', () => {
       gutter: 5,
       margin: { left: 0, top: 0, right: 0, bottom: 0 },
     });
-    for (let i = 0; i < sortLevels.length; i++) {
-      console.log(sortLevels[i].map((v) => `${v.id}: ${v.getOptions('x')}`).join(' , '));
-    }
+    printLayoutResult(sortLevels, '7 Nodes BK');
+    printPositionTable(sortLevels);
+    saveSvg(sortLevels, 'bk_7_nodes', '7 Nodes BK');
   });
   it('should brandeskopf correctly with tvision nodes', () => {
     const vertices: Array<Vertex> = [];
@@ -140,10 +141,9 @@ describe('Position layout bk new', () => {
       gutter: 5,
       margin: { left: 0, top: 0, right: 0, bottom: 0 },
     });
-    for (let i = 0; i < sortLevels.length; i++) {
-      console.log(sortLevels[i].map((v) => `${v.id}: ${v.getOptions('x')}`).join(' , '));
-    }
-    printVertices(sortLevels);
+    printLayoutResult(sortLevels, 'TVision Nodes');
+    printPositionTable(sortLevels);
+    saveSvg(sortLevels, 'bk_tvision', 'TVision Nodes');
   });
   it('Should do right layout', () => {
     const vertices: Array<Vertex> = [];
@@ -175,9 +175,8 @@ describe('Position layout bk new', () => {
       gutter: 5,
       margin: { left: 0, top: 0, right: 0, bottom: 0 },
     });
-    for (let i = 0; i < sortLevels.length; i++) {
-      console.log(sortLevels[i].map((v) => `${v.id}: ${v.getOptions('x')}`).join(' , '));
-    }
-    printVertices(sortLevels);
+    printLayoutResult(sortLevels, '10 Nodes Layout');
+    printPositionTable(sortLevels);
+    saveSvg(sortLevels, 'bk_10_nodes', '10 Nodes Layout');
   });
 });

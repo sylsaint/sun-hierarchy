@@ -2,74 +2,105 @@ import Graph, { Vertex, Edge } from '@/interface/graph';
 import { cloneGraph, findVertexById, getDummyId } from '@/utils/graph';
 import { PX, PY, DUMMY } from '@/interface/constant';
 
+/**
+ * Build hierarchy levels using topological sort (Kahn's algorithm).
+ * For nodes with multiple parents, the level is max(parent levels) + 1,
+ * which ensures proper placement below all ancestors.
+ */
 export function makeHierarchy(g: Graph): Vertex[][] {
-  const roots: Vertex[] = [];
-  // find all the roots without incoming edges
   const cloned: Graph = cloneGraph(g);
+
+  // Compute in-degree for each vertex in the cloned graph
+  const inDegreeMap = new Map<string | number, number>();
+  const vertexMap = new Map<string | number, Vertex>();
   cloned.vertices.map((v) => {
-    let isRoot: boolean = true;
-    let outDegree: number = 0;
-    let inDegree: number = 0;
+    vertexMap.set(v.id, v);
+    let inDegree = 0;
     v.edges.map((edge) => {
-      if (edge.down == v) {
-        isRoot = false;
-        inDegree += 1;
-      } else {
-        outDegree += 1;
-      }
+      if (edge.down === v) inDegree++;
     });
-    if (isRoot) {
+    inDegreeMap.set(v.id, inDegree);
+  });
+
+  // Find roots (in-degree == 0)
+  const roots: Vertex[] = [];
+  cloned.vertices.map((v) => {
+    if (inDegreeMap.get(v.id) === 0) {
       roots.push(v);
-    } else {
-      v.setOptions('outInRatio', outDegree / inDegree);
     }
   });
-  // judge if roots is empty, if yes, add max (out(v) / in (v)) to roots
+
+  // If no roots found (cycle), pick vertices with max out/in ratio
   if (!roots.length) {
-    // find the maximum ratio
-    let max: number = 0;
+    let maxRatio = 0;
     cloned.vertices.map((v) => {
-      const ratio: number = v.getOptions('outInRatio');
-      if (ratio > max) max = ratio;
-    });
-    cloned.vertices.map((v) => {
-      if (v.getOptions('outInRatio') == max) roots.push(v);
-    });
-  }
-  const visited = [];
-  while (roots.length) {
-    const node: Vertex = roots.shift() as Vertex;
-    if (!node.getOptions(PY)) {
-      node.setOptions(PY, 1);
-    }
-    if (visited.indexOf(node) > -1) {
-      continue;
-    }
-    visited.push(node);
-    const exclude: Array<Edge> = [];
-    node.edges.map((edge) => {
-      const down: Vertex = edge.down;
-      exclude.push(edge);
-      let only: boolean = true;
-      // check if there are other incomming edges
-      down.edges.map((edge) => {
-        if (edge.up != node && edge.down == down) only = false;
+      let outDegree = 0;
+      let inDegree = 0;
+      v.edges.map((edge) => {
+        if (edge.down === v) inDegree++;
+        else outDegree++;
       });
-      if (only) {
-        const downLevel: number = down.getOptions(PY);
-        if (!downLevel) {
-          down.setOptions(PY, node.getOptions(PY) + 1);
-        } else {
-          // ensure even there are cycles, procedure can be terminated
-          if (downLevel < node.getOptions(PY) + 1 && downLevel != 1) {
-            down.setOptions(PY, node.getOptions(PY) + 1);
-          }
-        }
-        roots.push(down);
+      const ratio = inDegree > 0 ? outDegree / inDegree : outDegree;
+      v.setOptions('outInRatio', ratio);
+      if (ratio > maxRatio) maxRatio = ratio;
+    });
+    cloned.vertices.map((v) => {
+      if (v.getOptions('outInRatio') === maxRatio) {
+        roots.push(v);
+        inDegreeMap.set(v.id, 0);
       }
     });
-    exclude.map((edge) => cloned.removeEdge(edge));
   }
+
+  // Topological sort with level assignment
+  // Level of a node = max(level of all parents) + 1
+  const levelMap = new Map<string | number, number>();
+  roots.map((v) => levelMap.set(v.id, 1));
+
+  const queue: Vertex[] = [...roots];
+  const visited: Vertex[] = [];
+
+  while (queue.length) {
+    const node = queue.shift() as Vertex;
+    if (visited.some((v) => v.id === node.id)) continue;
+    visited.push(node);
+
+    const currentLevel = levelMap.get(node.id) || 1;
+    node.setOptions(PY, currentLevel);
+
+    // Process all outgoing edges
+    node.edges.map((edge) => {
+      if (edge.up !== node) return;
+      const down = edge.down;
+      const downId = down.id;
+
+      // Set child level to max(current child level, parent level + 1)
+      const existingLevel = levelMap.get(downId) || 0;
+      const newLevel = currentLevel + 1;
+      if (newLevel > existingLevel) {
+        levelMap.set(downId, newLevel);
+      }
+
+      // Decrease in-degree; when all parents processed, enqueue
+      const newInDegree = (inDegreeMap.get(downId) || 1) - 1;
+      inDegreeMap.set(downId, newInDegree);
+      if (newInDegree <= 0) {
+        queue.push(down);
+      }
+    });
+  }
+
+  // Handle any unvisited vertices (disconnected or in cycles)
+  cloned.vertices.map((v) => {
+    if (!visited.some((vis) => vis.id === v.id)) {
+      visited.push(v);
+      if (!levelMap.has(v.id)) {
+        levelMap.set(v.id, 1);
+        v.setOptions(PY, 1);
+      }
+    }
+  });
+
   const levels: Array<Array<Vertex>> = adjustLevel(g, visited);
   addDummy(g, levels);
   return levels;

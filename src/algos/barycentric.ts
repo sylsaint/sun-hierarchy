@@ -64,7 +64,7 @@ export type BaryCentricOptions = {
   colFixed?: boolean;
 };
 
-const DEFAULT_TOTAL_ROUND = 12;
+const DEFAULT_TOTAL_ROUND = 24;
 const DEFAULT_TOTAL_BI_ROUND = 6;
 
 function crossCount(rows: Vertex[], cols: Vertex[]): number {
@@ -308,13 +308,64 @@ function finetuneTwoLevelbaryCentric(
   }
 }
 
+/**
+ * Adjacent exchange: try swapping adjacent vertices in a layer to reduce crossings.
+ * This is a post-processing step after barycentric ordering that can catch
+ * improvements the barycentric heuristic misses, especially for multi-parent nodes.
+ */
+/**
+ * Adjacent exchange: try swapping adjacent vertices in a layer to reduce crossings.
+ * This is a post-processing step after barycentric ordering that can catch
+ * improvements the barycentric heuristic misses, especially for multi-parent nodes.
+ * Limited to MAX_EXCHANGE_PASSES to avoid performance issues on large layers.
+ */
+const MAX_EXCHANGE_PASSES = 3;
+const MAX_EXCHANGE_LAYER_SIZE = 20;
+
+function adjacentExchange(
+  row: Vertex[],
+  col: Vertex[],
+  fixedIsRow: boolean,
+): { row: Vertex[]; col: Vertex[]; crossCount: number } {
+  const layer = fixedIsRow ? col : row;
+  // Skip adjacent exchange for large layers to avoid O(n²) performance issues
+  if (layer.length > MAX_EXCHANGE_LAYER_SIZE) {
+    return { row, col, crossCount: crossCount(row, col) };
+  }
+  let improved = true;
+  let bestCross = crossCount(row, col);
+  let passes = 0;
+  while (improved && passes < MAX_EXCHANGE_PASSES) {
+    improved = false;
+    passes++;
+    for (let i = 0; i < layer.length - 1; i++) {
+      // Try swapping adjacent pair
+      const temp = layer[i];
+      layer[i] = layer[i + 1];
+      layer[i + 1] = temp;
+      const newCross = crossCount(row, col);
+      if (newCross < bestCross) {
+        bestCross = newCross;
+        improved = true;
+      } else {
+        // Swap back
+        layer[i + 1] = layer[i];
+        layer[i] = temp;
+      }
+    }
+  }
+  return { row, col, crossCount: bestCross };
+}
+
 function downUpPhase(levels: Vertex[][]): MulLevelbaryCentricResult {
   let totalCross = 0;
   levels.map((vertices, idx) => {
     if (idx === levels.length - 1) return;
-    const { col, crossCount } = calcTwoLevelbaryCentric(vertices, levels[idx + 1], { rowFixed: true });
-    totalCross += crossCount;
-    levels[idx + 1] = col;
+    const { col, crossCount: cc } = calcTwoLevelbaryCentric(vertices, levels[idx + 1], { rowFixed: true });
+    // Apply adjacent exchange as post-processing
+    const { col: exchangedCol, crossCount: exchangedCross } = adjacentExchange(vertices, col, true);
+    totalCross += exchangedCross;
+    levels[idx + 1] = exchangedCol;
   });
   return { levels, totalCross };
 }
@@ -323,9 +374,11 @@ function upDownPhase(levels: Vertex[][]): MulLevelbaryCentricResult {
   let totalCross = 0;
   for (let i = levels.length - 1; i > 0; i--) {
     if (i === 0) continue;
-    const { row, crossCount } = calcTwoLevelbaryCentric(levels[i - 1], levels[i], { colFixed: true });
-    totalCross += crossCount;
-    levels[i - 1] = row;
+    const { row, crossCount: cc } = calcTwoLevelbaryCentric(levels[i - 1], levels[i], { colFixed: true });
+    // Apply adjacent exchange as post-processing
+    const { row: exchangedRow, crossCount: exchangedCross } = adjacentExchange(row, levels[i], false);
+    totalCross += exchangedCross;
+    levels[i - 1] = exchangedRow;
   }
   return { levels, totalCross };
 }
