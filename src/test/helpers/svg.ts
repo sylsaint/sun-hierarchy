@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Vertex } from '@/interface/graph';
 import { DUMMY } from '@/interface/constant';
+import { routeEdges } from '@/algos/edgeRouting';
 
 // ─────────────────────────────────────────────────────────
 // SVG Generation
@@ -55,9 +56,6 @@ const defaultStyle: SvgStyle = {
   titleFontSize: 16,
   statsFontSize: 12,
 };
-
-/** Threshold (in px) to treat two x-coordinates as vertically aligned */
-const VERTICAL_THRESHOLD = 2;
 
 /** Escape XML special characters */
 function escapeXml(s: string): string {
@@ -219,25 +217,24 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
   const offsetX = s.padding - minX;
   const offsetY = s.padding - minY + titleAreaHeight;
 
-  // ── Collect unique edges ──
-  const edgeSet = new Set<string>();
-  const edges: { fromId: string | number; toId: string | number }[] = [];
-  all.forEach((v) => {
-    v.edges.forEach((e) => {
-      if (e.up === v || e.up.id === v.id) {
-        const key = `${e.up.id}::${e.down.id}`;
-        if (!edgeSet.has(key)) {
-          edgeSet.add(key);
-          edges.push({ fromId: e.up.id, toId: e.down.id });
-        }
-      }
-    });
+  // ── Route edges using core library ──
+  // Build a position lookup that maps vertex → rendered center (with offset)
+  const edgePaths = routeEdges(levels, {
+    nodeWidth: s.nodeWidth,
+    nodeHeight: s.nodeHeight,
+    dummyRadius: s.dummyRadius,
+    pathGenerator: 'bezier',
+    positionFn: (v) => {
+      const info = nodeMap.get(v.id);
+      if (info) return { x: info.cx + offsetX, y: info.cy + offsetY };
+      return { x: offsetX, y: offsetY };
+    },
   });
 
   // ── Stats ──
   const realNodes = all.filter((v) => v.getOptions('type') !== DUMMY).length;
   const dummyNodes = all.length - realNodes;
-  const statsText = `${realNodes} nodes \u00b7 ${dummyNodes} dummy \u00b7 ${edges.length} edges \u00b7 ${levels.length} levels`;
+  const statsText = `${realNodes} nodes \u00b7 ${dummyNodes} dummy \u00b7 ${edgePaths.length} edges \u00b7 ${levels.length} levels`;
 
   // ── Build SVG ──
   const parts: string[] = [];
@@ -273,43 +270,11 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
 
   // ── Draw edges ──
   parts.push(`  <g class="edges">`);
-  edges.forEach(({ fromId, toId }) => {
-    const from = nodeMap.get(fromId);
-    const to = nodeMap.get(toId);
-    if (!from || !to) return;
-
-    const x1 = from.cx + offsetX;
-    const y1 = from.cy + offsetY;
-    const x2 = to.cx + offsetX;
-    const y2 = to.cy + offsetY;
-
-    // Adjust start/end points to node boundaries
-    const fromHH = from.isDummy ? s.dummyRadius : s.nodeHeight / 2;
-    const toHH = to.isDummy ? s.dummyRadius : s.nodeHeight / 2;
-
-    const startY = y1 + fromHH;
-    const endY = y2 - toHH;
-
-    // For dummy target nodes, don't show arrowhead
-    const markerEnd = to.isDummy ? '' : ' marker-end="url(#arrowhead)"';
-
-    const dx = Math.abs(x2 - x1);
-    let pathD: string;
-
-    if (dx < VERTICAL_THRESHOLD) {
-      // Vertical line: use a straight line
-      pathD = `M ${x1} ${startY} L ${x2} ${endY}`;
-    } else {
-      // Non-vertical: use a smooth cubic bezier curve
-      // Control points extend ~40% of the vertical distance for a natural S-curve
-      const vertDist = endY - startY;
-      const cp1Y = startY + vertDist * 0.4;
-      const cp2Y = endY - vertDist * 0.4;
-      pathD = `M ${x1} ${startY} C ${x1} ${cp1Y}, ${x2} ${cp2Y}, ${x2} ${endY}`;
-    }
-
+  edgePaths.forEach((ep) => {
+    const targetInfo = nodeMap.get(ep.targetId);
+    const markerEnd = targetInfo && !targetInfo.isDummy ? ' marker-end="url(#arrowhead)"' : '';
     parts.push(
-      `    <path d="${pathD}" fill="none" stroke="${s.edgeStroke}" stroke-width="${s.edgeWidth}"${markerEnd} />`,
+      `    <path d="${ep.svgPath}" fill="none" stroke="${s.edgeStroke}" stroke-width="${s.edgeWidth}"${markerEnd} />`,
     );
   });
   parts.push(`  </g>`);

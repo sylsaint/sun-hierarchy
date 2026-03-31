@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="590" viewBox="0 0 600 590">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <polygon points="0 0, 8 3, 0 6" fill="#888" />
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.15" />
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff" rx="8" />
+  <text x="300" y="26" text-anchor="middle" font-size="16" font-weight="600" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">Multi-Path Convergence</text>
+  <line x1="30" y1="40" x2="570" y2="40" stroke="#e0e0e0" stroke-width="1" />
+  <g class="edges">
+    <path d="M 300 140 C 300 185, 120 175, 120 220" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 300 140 L 300 220" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 300 140 C 300 185, 480 175, 480 220" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 120 260 L 120 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 300 260 C 300 305, 120 295, 120 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 300 260 L 300 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 480 260 L 480 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 120 380 C 120 425, 300 415, 300 460" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 300 380 L 300 460" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 480 380 C 480 425, 300 415, 300 460" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+  </g>
+  <g class="nodes">
+    <rect x="240" y="100" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="300" y="124.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">0</text>
+    <rect x="60" y="220" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="120" y="244.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">1</text>
+    <rect x="240" y="220" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="300" y="244.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">2</text>
+    <rect x="420" y="220" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="480" y="244.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">3</text>
+    <rect x="60" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="120" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">4</text>
+    <rect x="240" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="300" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">5</text>
+    <rect x="420" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="480" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">6</text>
+    <rect x="240" y="460" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="300" y="484.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">7</text>
+  </g>
+  <line x1="30" y1="560" x2="570" y2="560" stroke="#e0e0e0" stroke-width="1" />
+  <text x="300" y="579" text-anchor="middle" font-size="12" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#999">8 nodes · 0 dummy · 10 edges · 4 levels</text>
+</svg>

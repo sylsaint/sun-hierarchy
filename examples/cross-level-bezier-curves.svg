@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="545" height="590" viewBox="0 0 545 590">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <polygon points="0 0, 8 3, 0 6" fill="#888" />
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.15" />
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff" rx="8" />
+  <text x="272.5" y="26" text-anchor="middle" font-size="16" font-weight="600" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">Cross-Level Bezier Curves</text>
+  <line x1="30" y1="40" x2="515" y2="40" stroke="#e0e0e0" stroke-width="1" />
+  <g class="edges">
+    <path d="M 245 140 C 245 185, 425 175, 425 220" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 245 140 C 245 185, 95 203.33333333333334, 65 240 C 35 276.6666666666667, 35 323.3333333333333, 65 360 C 95 396.6666666666667, 245 415, 245 460" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 425 260 L 425 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 425 380 C 425 425, 245 415, 245 460" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+  </g>
+  <g class="nodes">
+    <rect x="185" y="100" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="245" y="124.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">0</text>
+    <circle cx="65" cy="240" r="5" fill="#ccc" stroke="#ccc" stroke-width="1" />
+    <rect x="365" y="220" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="425" y="244.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">1</text>
+    <circle cx="65" cy="360" r="5" fill="#ccc" stroke="#ccc" stroke-width="1" />
+    <rect x="365" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="425" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">2</text>
+    <rect x="185" y="460" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="245" y="484.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">3</text>
+  </g>
+  <line x1="30" y1="560" x2="515" y2="560" stroke="#e0e0e0" stroke-width="1" />
+  <text x="272.5" y="579" text-anchor="middle" font-size="12" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#999">4 nodes · 2 dummy · 4 edges · 4 levels</text>
+</svg>

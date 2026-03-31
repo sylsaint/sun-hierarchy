@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="710" viewBox="0 0 960 710">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <polygon points="0 0, 8 3, 0 6" fill="#888" />
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.15" />
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff" rx="8" />
+  <text x="480" y="26" text-anchor="middle" font-size="16" font-weight="600" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">Wide Fan-Out Hierarchy</text>
+  <line x1="30" y1="40" x2="930" y2="40" stroke="#e0e0e0" stroke-width="1" />
+  <g class="edges">
+    <path d="M 480 140 L 480 220" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 480 260 C 480 350, 120 250, 120 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 480 260 C 480 305, 300 295, 300 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 480 260 L 480 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 480 260 C 480 305, 660 295, 660 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 480 260 C 480 350, 840 250, 840 340" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 120 380 L 120 460" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 300 380 L 300 460" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 300 380 C 300 425, 480 415, 480 460" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 300 500 C 300 536, 390 544, 390 580" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+    <path d="M 480 500 C 480 536, 390 544, 390 580" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#arrowhead)" />
+  </g>
+  <g class="nodes">
+    <rect x="420" y="100" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="480" y="124.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">1</text>
+    <rect x="600" y="100" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="660" y="124.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">2</text>
+    <rect x="420" y="220" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="480" y="244.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">3</text>
+    <rect x="60" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="120" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">4</text>
+    <rect x="240" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="300" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">5</text>
+    <rect x="420" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="480" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">6</text>
+    <rect x="600" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="660" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">7</text>
+    <rect x="780" y="340" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="840" y="364.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">8</text>
+    <rect x="60" y="460" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="120" y="484.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">9</text>
+    <rect x="240" y="460" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="300" y="484.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">10</text>
+    <rect x="420" y="460" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="480" y="484.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">0</text>
+    <rect x="330" y="580" width="120" height="40" rx="6" ry="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5" filter="url(#shadow)" />
+    <text x="390" y="604.55" text-anchor="middle" font-size="13" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#333">11</text>
+  </g>
+  <line x1="30" y1="680" x2="930" y2="680" stroke="#e0e0e0" stroke-width="1" />
+  <text x="480" y="699" text-anchor="middle" font-size="12" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" fill="#999">12 nodes · 0 dummy · 11 edges · 5 levels</text>
+</svg>
