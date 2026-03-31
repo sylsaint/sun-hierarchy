@@ -632,21 +632,41 @@ function centerOverChildren(level: Vertex[], _levels: Vertex[][], spacing: numbe
 }
 
 /**
- * Center all nodes on a level under their parents (upstream neighbors).
- * Leaf nodes get priority, non-leaf nodes use a compromise position.
+ * Center nodes on a level toward their parents (upstream neighbors).
+ * Only processes leaf nodes (no children) — non-leaf nodes are positioned
+ * by the bottom-up centerOverChildren pass.
+ *
+ * Key insight: for leaf nodes at the bottom of a "single-child chain"
+ * (e.g., A,B,C → D → E where each node has only one child), we trace
+ * UP through the chain to find the effective ancestor that has multiple
+ * parents or siblings. This allows the entire chain to be pulled toward
+ * the correct center through iterative centering, without any special
+ * case logic.
  */
 function centerUnderParents(level: Vertex[], _levels: Vertex[][], spacing: number): void {
-  // Center leaf nodes (no children) under their parents.
-  // Non-leaf nodes are NOT moved here — their position is primarily
-  // determined by the bottom-up centerOverChildren pass.
-  // Moving non-leaf nodes toward a parent-child compromise would break
-  // symmetry in balanced trees.
   for (const v of level) {
     const children = getChildren(v);
     if (children.length > 0) continue;
     const parents = getParents(v);
     if (parents.length === 0) continue;
-    const xs = parents.map((p) => p.getOptions('x') as number);
+
+    // Trace up through single-child ancestors to find the effective
+    // parent center. If our parent has only us as a child, and our
+    // parent has parents, use the grandparent center instead.
+    // This breaks the "mutual lock" in hanging chains like D→E.
+    let targetNode: Vertex = v;
+    let targetParents = parents;
+    while (targetParents.length === 1) {
+      const singleParent = targetParents[0];
+      const siblings = getChildren(singleParent);
+      if (siblings.length !== 1) break; // parent has other children too
+      const grandParents = getParents(singleParent);
+      if (grandParents.length === 0) break; // reached root
+      targetNode = singleParent;
+      targetParents = grandParents;
+    }
+
+    const xs = targetParents.map((p) => p.getOptions('x') as number);
     const desiredX = (Math.min(...xs) + Math.max(...xs)) / 2;
     tryMove(v, desiredX, level, spacing);
   }
