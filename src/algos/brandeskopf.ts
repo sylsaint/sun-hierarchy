@@ -1,6 +1,6 @@
 import { Vertex } from '@/interface/graph';
 import { LayoutOptions } from '@/interface/definition';
-import { defaultOptions } from '@/interface/constant';
+import { defaultOptions, DUMMY } from '@/interface/constant';
 
 export type VertexIdMap = { [key: string | number]: string | number };
 export type VertexIdNumberMap = { [key: string | number]: number };
@@ -312,23 +312,280 @@ function placeBlock(vid: string | number, options: BlockOptions): VertexIdNumber
 function balance(levels: Vertex[][], xss: VertexIdNumberMap[], options: LayoutOptions): Vertex[][] {
   const { width, height, gutter = 0, margin = { left: 0, top: 0 } } = options;
   const { left = 0, top = 0 } = margin;
-  levels
-    .flatMap((vertices) => vertices)
-    .map((v) => {
-      const posList: number[] = xss.map((map) => map[v.id]).sort((a, b) => a - b);
-      // Use median of the 4 alignments instead of average for better robustness
-      // with multi-parent nodes. Median is less sensitive to outlier alignments.
-      const len = posList.length;
-      let xs: number;
-      if (len % 2 === 0) {
-        xs = (posList[len / 2 - 1] + posList[len / 2]) / 2;
-      } else {
-        xs = posList[(len - 1) / 2];
-      }
-      v.setOptions('x', left + xs * (width + gutter));
-      v.setOptions('y', top + v.getOptions('level') * (height + gutter));
-    });
+  const spacing = width + gutter;
+
+  // Step 1: Compute median xs for each vertex from the 4 BK alignments
+  const allVertices = levels.flatMap((v) => v);
+  allVertices.forEach((v) => {
+    const posList: number[] = xss.map((map) => map[v.id]).sort((a, b) => a - b);
+    const len = posList.length;
+    let xs: number;
+    if (len % 2 === 0) {
+      xs = (posList[len / 2 - 1] + posList[len / 2]) / 2;
+    } else {
+      xs = posList[(len - 1) / 2];
+    }
+    v.setOptions('x', left + xs * spacing);
+    v.setOptions('y', top + v.getOptions('level') * (height + gutter));
+  });
+
+  // Step 2: Improve layout with centering and compaction passes
+  improveLayout(levels, spacing);
+
   return levels;
+}
+
+// ─── Minimum separation between two adjacent nodes on the same level ───
+// Real nodes need full spacing; dummy nodes only need a small gap.
+function minSep(a: Vertex, b: Vertex, spacing: number): number {
+  const aIsDummy = a.getOptions('type') === DUMMY;
+  const bIsDummy = b.getOptions('type') === DUMMY;
+  if (aIsDummy && bIsDummy) return spacing * 0.15;
+  if (aIsDummy || bIsDummy) return spacing * 0.5;
+  return spacing;
+}
+
+/**
+ * Get the children (downstream neighbors) of a vertex.
+ */
+function getChildren(v: Vertex): Vertex[] {
+  return v.edges.filter((e) => e.up === v || e.up.id === v.id).map((e) => e.down);
+}
+
+/**
+ * Get the parents (upstream neighbors) of a vertex.
+ */
+function getParents(v: Vertex): Vertex[] {
+  return v.edges.filter((e) => e.down === v || e.down.id === v.id).map((e) => e.up);
+}
+
+/**
+ * Improve the BK layout with multiple passes:
+ *  1. Center parents over their children (bottom-up) — primary
+ *  2. Center leaf nodes under their parents (top-down) — secondary
+ *  3. Compact: close unnecessary gaps
+ *  4. Reposition dummy nodes via linear interpolation
+ *  5. Normalize: shift so min x = 0
+ *
+ * Each pass respects the ordering constraint: nodes on the same level
+ * must maintain their relative order and minimum separation.
+ */
+function improveLayout(levels: Vertex[][], spacing: number): void {
+  const MAX_ITER = 8;
+
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    // Bottom-up: center each node over its children.
+    // This is the primary centering pass — a parent should be centered
+    // above its children for visual clarity.
+    for (let li = levels.length - 2; li >= 0; li--) {
+      centerOverChildren(levels[li], spacing);
+    }
+
+    // Top-down: center nodes that have NO children under their parents.
+    // Nodes with children are already positioned by the bottom-up pass;
+    // moving them again would break that centering.
+    for (let li = 1; li < levels.length; li++) {
+      centerLeavesUnderParents(levels[li], spacing);
+    }
+  }
+
+  // Compact: try to close unnecessary gaps
+  compactLayout(levels, spacing);
+
+  // Final centering passes after compaction
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    for (let li = levels.length - 2; li >= 0; li--) {
+      centerOverChildren(levels[li], spacing);
+    }
+    for (let li = 1; li < levels.length; li++) {
+      centerLeavesUnderParents(levels[li], spacing);
+    }
+  }
+
+  // Reposition dummy nodes: linear interpolation between real endpoints
+  repositionDummyNodes(levels, spacing);
+
+  // Final normalization: shift everything so min x = 0
+  const allVerts = levels.flatMap((v) => v);
+  const globalMinX = Math.min(...allVerts.map((v) => v.getOptions('x') as number));
+  if (globalMinX !== 0) {
+    const delta = -globalMinX;
+    allVerts.forEach((v) => v.setOptions('x', (v.getOptions('x') as number) + delta));
+  }
+}
+
+/**
+ * Center each node on a level over its children (downstream neighbors).
+ */
+function centerOverChildren(level: Vertex[], spacing: number): void {
+  for (const v of level) {
+    const children = getChildren(v);
+    if (children.length === 0) continue;
+    const xs = children.map((c) => c.getOptions('x') as number);
+    const desiredX = (Math.min(...xs) + Math.max(...xs)) / 2;
+    tryMove(v, desiredX, level, spacing);
+  }
+}
+
+/**
+ * Center leaf nodes (nodes with no children) under their parents.
+ * Nodes that have children are NOT moved — their position is determined
+ * by the bottom-up centering pass.
+ */
+function centerLeavesUnderParents(level: Vertex[], spacing: number): void {
+  for (const v of level) {
+    // Skip nodes that have children — they're positioned by bottom-up pass
+    const children = getChildren(v);
+    if (children.length > 0) continue;
+
+    const parents = getParents(v);
+    if (parents.length === 0) continue;
+    const xs = parents.map((p) => p.getOptions('x') as number);
+    const desiredX = (Math.min(...xs) + Math.max(...xs)) / 2;
+    tryMove(v, desiredX, level, spacing);
+  }
+}
+
+/**
+ * Compact the layout by closing unnecessary gaps. For each level, we try
+ * to shift each node (and all nodes to its right) leftward to close the
+ * gap with its left neighbor, but only if the shift doesn't break the
+ * centering of any connected node.
+ *
+ * This is much gentler than "push everything to x=0" — it preserves the
+ * relative structure established by centering passes.
+ */
+function compactLayout(levels: Vertex[][], spacing: number): void {
+  // Find the widest level — this determines the minimum total width
+  // We compact by trying to reduce gaps on each level independently.
+  for (const level of levels) {
+    for (let i = 1; i < level.length; i++) {
+      const prev = level[i - 1];
+      const cur = level[i];
+      const prevX = prev.getOptions('x') as number;
+      const curX = cur.getOptions('x') as number;
+      const sep = minSep(prev, cur, spacing);
+      const gap = curX - prevX - sep;
+
+      if (gap <= 0) continue; // already at minimum separation
+
+      // Try to shift cur (and everything to its right) left by `gap`.
+      // But limit the shift so we don't break centering with connected nodes.
+      let maxShift = gap;
+
+      // Check: shifting cur left would move it away from its parents/children center.
+      // We allow the shift only if it moves cur closer to (or doesn't move it
+      // further from) the center of its connected nodes.
+      const neighbors = [...getChildren(cur), ...getParents(cur)];
+      if (neighbors.length > 0) {
+        const xs = neighbors.map((n) => n.getOptions('x') as number);
+        const center = (Math.min(...xs) + Math.max(...xs)) / 2;
+        const curDist = Math.abs(curX - center);
+        const newDist = Math.abs(curX - maxShift - center);
+        // Only shift if it brings us closer to center or keeps same distance
+        if (newDist > curDist + 1) {
+          // Shifting would move us further from center; limit shift
+          maxShift = Math.max(0, curX - center - (center - (prevX + sep)));
+          if (maxShift < 0) maxShift = 0;
+        }
+      }
+
+      if (maxShift <= 0) continue;
+
+      // Shift cur and all nodes to its right on this level
+      for (let j = i; j < level.length; j++) {
+        const v = level[j];
+        v.setOptions('x', (v.getOptions('x') as number) - maxShift);
+      }
+    }
+  }
+}
+
+/**
+ * Try to move vertex `v` to `desiredX` on its level, respecting ordering
+ * constraints and minimum separations with neighbors.
+ */
+function tryMove(v: Vertex, desiredX: number, level: Vertex[], spacing: number): void {
+  const idx = level.indexOf(v);
+  if (idx < 0) return;
+
+  const curX = v.getOptions('x') as number;
+  if (Math.abs(desiredX - curX) < 0.5) return; // negligible move
+
+  // Compute the allowed range [lo, hi] for v's x-coordinate
+  let lo = -Infinity;
+  let hi = Infinity;
+
+  if (idx > 0) {
+    const prev = level[idx - 1];
+    lo = (prev.getOptions('x') as number) + minSep(prev, v, spacing);
+  }
+  if (idx < level.length - 1) {
+    const next = level[idx + 1];
+    hi = (next.getOptions('x') as number) - minSep(v, next, spacing);
+  }
+
+  const newX = Math.max(lo, Math.min(hi, desiredX));
+  v.setOptions('x', newX);
+}
+
+/**
+ * Reposition dummy nodes via linear interpolation between their real
+ * source and target endpoints. This makes long-span edges as straight
+ * as possible and prevents dummy nodes from wasting horizontal space.
+ */
+function repositionDummyNodes(levels: Vertex[][], spacing: number): void {
+  const allVertices = levels.flatMap((v) => v);
+
+  allVertices.forEach((v) => {
+    if (v.getOptions('type') !== DUMMY) return;
+
+    // Walk up to find the real source node
+    let source: Vertex | null = null;
+    let cur: Vertex = v;
+    while (true) {
+      const upEdges = cur.edges.filter((e) => e.down === cur || e.down.id === cur.id);
+      if (upEdges.length === 0) break;
+      const parent = upEdges[0].up;
+      if (parent.getOptions('type') !== DUMMY) {
+        source = parent;
+        break;
+      }
+      cur = parent;
+    }
+
+    // Walk down to find the real target node
+    let target: Vertex | null = null;
+    cur = v;
+    while (true) {
+      const downEdges = cur.edges.filter((e) => e.up === cur || e.up.id === cur.id);
+      if (downEdges.length === 0) break;
+      const child = downEdges[0].down;
+      if (child.getOptions('type') !== DUMMY) {
+        target = child;
+        break;
+      }
+      cur = child;
+    }
+
+    if (!source || !target) return;
+
+    const srcLevel = source.getOptions('level') as number;
+    const tgtLevel = target.getOptions('level') as number;
+    const curLevel = v.getOptions('level') as number;
+    const srcX = source.getOptions('x') as number;
+    const tgtX = target.getOptions('x') as number;
+
+    if (tgtLevel === srcLevel) return;
+
+    // Linear interpolation
+    const t = (curLevel - srcLevel) / (tgtLevel - srcLevel);
+    const desiredX = srcX + t * (tgtX - srcX);
+
+    // Move dummy to interpolated position, respecting neighbor constraints
+    const level = levels[curLevel];
+    tryMove(v, desiredX, level, spacing);
+  });
 }
 
 function normalize(xcoords: VertexIdNumberMap, reversed = false): { xcoords: VertexIdNumberMap; width: number } {

@@ -98,59 +98,101 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
   // Build a map from vertex id to node info
   const nodeMap = new Map<string | number, { cx: number; cy: number; isDummy: boolean }>();
 
-  // ── Collect raw positions and compute scale factors ──
-  // The layout algorithm places nodes at (xs * layoutWidth, level * layoutHeight)
-  // where gutter may be 0, causing overlap. We need to scale coordinates so that
-  // nodes have enough spacing.
-  const rawPositions = all.map((v) => ({
-    v,
-    isDummy: v.getOptions('type') === DUMMY,
-    rawX: (v.getOptions('x') ?? 0) as number,
-    rawY: (v.getOptions('y') ?? 0) as number,
-  }));
+  // ── Position strategy ──
+  // Check whether the layout algorithm has assigned meaningful x/y coordinates.
+  // If all nodes share the same x (or y), coordinates are missing and we must
+  // fall back to computing positions from the levels structure directly.
+  const rawXValues = all.map((v) => (v.getOptions('x') ?? 0) as number);
+  const rawYValues = all.map((v) => (v.getOptions('y') ?? 0) as number);
+  const uniqueRawX = new Set(rawXValues);
+  const uniqueRawY = new Set(rawYValues);
+  const hasValidCoords = uniqueRawX.size > 1 || uniqueRawY.size > 1;
 
-  // Find unique sorted x and y values to compute actual spacing
-  const uniqueX = Array.from(new Set(rawPositions.map((p) => p.rawX))).sort((a, b) => a - b);
-  const uniqueY = Array.from(new Set(rawPositions.map((p) => p.rawY))).sort((a, b) => a - b);
+  // Desired center-to-center spacing for fallback layout
+  const cellWidth = s.nodeWidth + 60; // 60px gap between node edges horizontally
+  const cellHeight = s.nodeHeight + 80; // 80px gap between layer edges vertically
 
-  // Compute minimum gap between adjacent unique coordinates
-  const minGapX =
-    uniqueX.length > 1
-      ? Math.min(
-          ...uniqueX
-            .slice(1)
-            .map((v, i) => v - uniqueX[i])
-            .filter((g) => g > 0),
-        )
-      : 1;
-  const minGapY =
-    uniqueY.length > 1
-      ? Math.min(
-          ...uniqueY
-            .slice(1)
-            .map((v, i) => v - uniqueY[i])
-            .filter((g) => g > 0),
-        )
-      : 1;
+  if (hasValidCoords) {
+    // ── Scaled layout from algorithm coordinates ──
+    // Use the layout algorithm's coordinates directly, applying a scale factor
+    // to ensure nodes don't overlap. This preserves the algorithm's relative
+    // positioning (including compact dummy node placement) while guaranteeing
+    // comfortable spacing for rendering.
 
-  // Desired spacing: node size + comfortable gap
-  const desiredGapX = s.nodeWidth + 40; // 40px horizontal gap between nodes
-  const desiredGapY = s.nodeHeight + 60; // 60px vertical gap between layers
+    // Find minimum non-zero x gap between adjacent real nodes ON THE SAME
+    // LEVEL. Cross-level gaps are irrelevant because nodes on different
+    // levels don't overlap horizontally.
+    const sortedUniqueX = Array.from(uniqueRawX).sort((a, b) => a - b);
+    const sortedUniqueY = Array.from(uniqueRawY).sort((a, b) => a - b);
 
-  // Scale factors to ensure minimum spacing
-  const scaleX = minGapX < desiredGapX ? desiredGapX / minGapX : 1;
-  const scaleY = minGapY < desiredGapY ? desiredGapY / minGapY : 1;
+    let minXGap = Infinity;
+    // Group real nodes by level (y-value) and find per-level minimum gaps
+    const levelGroups = new Map<number, number[]>();
+    all.forEach((v) => {
+      if (v.getOptions('type') === DUMMY) return;
+      const rawY = (v.getOptions('y') ?? 0) as number;
+      const rawX = (v.getOptions('x') ?? 0) as number;
+      if (!levelGroups.has(rawY)) levelGroups.set(rawY, []);
+      levelGroups.get(rawY)!.push(rawX);
+    });
+    levelGroups.forEach((xs) => {
+      xs.sort((a, b) => a - b);
+      for (let i = 1; i < xs.length; i++) {
+        const gap = xs[i] - xs[i - 1];
+        if (gap > 0 && gap < minXGap) minXGap = gap;
+      }
+    });
+    // Fallback: if no same-level gaps found, use all unique x values
+    if (!isFinite(minXGap)) {
+      for (let i = 1; i < sortedUniqueX.length; i++) {
+        const gap = sortedUniqueX[i] - sortedUniqueX[i - 1];
+        if (gap > 0 && gap < minXGap) minXGap = gap;
+      }
+    }
+    let minYGap = Infinity;
+    for (let i = 1; i < sortedUniqueY.length; i++) {
+      const gap = sortedUniqueY[i] - sortedUniqueY[i - 1];
+      if (gap > 0 && gap < minYGap) minYGap = gap;
+    }
 
-  rawPositions.forEach(({ v, isDummy, rawX, rawY }) => {
-    const label = isDummy ? '' : String(v.id);
-    const scaledX = rawX * scaleX;
-    const scaledY = rawY * scaleY;
-    // Center the node at (scaledX + nodeWidth/2, scaledY + nodeHeight/2)
-    const cx = scaledX + s.nodeWidth / 2;
-    const cy = scaledY + s.nodeHeight / 2;
-    nodes.push({ v, cx, cy, label, isDummy });
-    nodeMap.set(v.id, { cx, cy, isDummy });
-  });
+    // Scale factors: ensure minimum gap maps to cellWidth/cellHeight
+    const xScale = isFinite(minXGap) && minXGap > 0 ? cellWidth / minXGap : 1;
+    const yScale = isFinite(minYGap) && minYGap > 0 ? cellHeight / minYGap : 1;
+
+    const minRawX = Math.min(...rawXValues);
+    const minRawY = Math.min(...rawYValues);
+
+    all.forEach((v) => {
+      const isDummy = v.getOptions('type') === DUMMY;
+      const label = isDummy ? '' : String(v.id);
+      const rawX = (v.getOptions('x') ?? 0) as number;
+      const rawY = (v.getOptions('y') ?? 0) as number;
+      const cx = Math.round((rawX - minRawX) * xScale) + s.nodeWidth / 2;
+      const cy = Math.round((rawY - minRawY) * yScale) + s.nodeHeight / 2;
+      nodes.push({ v, cx, cy, label, isDummy });
+      nodeMap.set(v.id, { cx, cy, isDummy });
+    });
+  } else {
+    // ── Fallback: derive positions from levels structure ──
+    // No valid coordinates from layout algorithm (e.g. only baryCentric was
+    // called without brandeskopf). Use each vertex's position within its
+    // level row and the level index as row.
+    levels.forEach((level, rowIdx) => {
+      // Center the row: compute offset so the row is horizontally centered
+      // relative to the widest row.
+      const maxCols = Math.max(...levels.map((l) => l.length));
+      const rowOffset = ((maxCols - level.length) * cellWidth) / 2;
+
+      level.forEach((v, colIdx) => {
+        const isDummy = v.getOptions('type') === DUMMY;
+        const label = isDummy ? '' : String(v.id);
+        const cx = rowOffset + colIdx * cellWidth + s.nodeWidth / 2;
+        const cy = rowIdx * cellHeight + s.nodeHeight / 2;
+        nodes.push({ v, cx, cy, label, isDummy });
+        nodeMap.set(v.id, { cx, cy, isDummy });
+      });
+    });
+  }
 
   // ── Compute bounding box ──
   let minX = Infinity,
@@ -372,10 +414,28 @@ export function generateSvgIndex(outputDir?: string): string {
 
   if (svgFiles.length === 0) return '';
 
+  // Threshold: SVG wider than this value gets full-width (single column)
+  const WIDE_THRESHOLD = 600;
+
   const cards = svgFiles
     .map((file: string) => {
       const name = file.replace('.svg', '').replace(/_/g, ' ');
-      return `    <div class="card">
+
+      // Read SVG file to extract width attribute for adaptive layout
+      let isWide = false;
+      try {
+        const svgContent = fs.readFileSync(path.join(dir, file), 'utf-8');
+        const widthMatch = svgContent.match(/width="(\d+(?:\.\d+)?)"/);
+        if (widthMatch) {
+          const svgWidth = parseFloat(widthMatch[1]);
+          isWide = svgWidth > WIDE_THRESHOLD;
+        }
+      } catch {
+        // Ignore read errors, default to normal card
+      }
+
+      const cardClass = isWide ? 'card card-wide' : 'card';
+      return `    <div class="${cardClass}">
       <h3>${escapeXml(name)}</h3>
       <div class="svg-container">
         <object data="${file}" type="image/svg+xml" width="100%"></object>
@@ -412,7 +472,7 @@ export function generateSvgIndex(outputDir?: string): string {
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
       gap: 24px;
       max-width: 1600px;
       margin: 0 auto;
@@ -423,6 +483,9 @@ export function generateSvgIndex(outputDir?: string): string {
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       overflow: hidden;
       transition: box-shadow 0.2s;
+    }
+    .card-wide {
+      grid-column: 1 / -1;
     }
     .card:hover {
       box-shadow: 0 4px 16px rgba(0,0,0,0.15);
@@ -437,6 +500,11 @@ export function generateSvgIndex(outputDir?: string): string {
     .svg-container {
       padding: 16px;
       overflow-x: auto;
+      min-height: 150px;
+    }
+    .svg-container object {
+      width: 100%;
+      min-height: 150px;
     }
   </style>
 </head>

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import Graph, { Vertex, Edge } from '@/interface/graph';
 import { baryCentric } from '@/algos/barycentric';
+import { brandeskopf } from '@/algos/brandeskopf';
 import { vegetables } from './data/data';
 import { printLayoutResult } from '@/utils/printer';
 import { saveSvg } from './helpers/svg';
@@ -201,8 +202,10 @@ describe('BaryCentric Method', () => {
       [vertices[11]],
     ];
     const { levels: nLevels, crossCount } = baryCentric(levels, {});
-    printLayoutResult(levels, 'BaryCentric Crossings=0');
-    saveSvg(levels, 'barycentric_crossings_0', 'BaryCentric Crossings=0');
+    // Apply coordinate assignment for proper layout
+    brandeskopf(nLevels);
+    printLayoutResult(nLevels, 'BaryCentric Crossings=0');
+    saveSvg(nLevels, 'barycentric_crossings_0', 'BaryCentric Crossings=0');
     expect(crossCount).equal(0);
   });
 });
