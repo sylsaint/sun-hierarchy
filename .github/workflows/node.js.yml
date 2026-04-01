@@ -1,44 +1,21 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests.
-# On success (master push only), it auto-creates a git tag and GitHub Release based on package.json version.
+# When version in package.json changes on master, auto-create a git tag.
+# The tag push will then trigger npm-publish.yml to build, test, and publish.
 
-name: Node.js CI
+name: Auto Tag on Version Change
 
 on:
   push:
     branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
-    - name: Use Node.js 24
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-        cache: 'pnpm'
-    - run: pnpm install
-    - run: pnpm run lint
-    - run: pnpm run build
-    - run: pnpm run test
-
-  release:
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+  tag:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Get version from package.json
         id: pkg
@@ -53,34 +30,10 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Generate release body
+      - name: Create tag
         if: steps.check_tag.outputs.exists == 'false'
-        id: body
         run: |
-          VERSION=${{ steps.pkg.outputs.version }}
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "content<<$EOF" >> $GITHUB_OUTPUT
-          echo "## 📦 sun-hierarchy v${VERSION}" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "### Install" >> $GITHUB_OUTPUT
-          echo '```bash' >> $GITHUB_OUTPUT
-          echo "npm install sun-hierarchy@${VERSION}" >> $GITHUB_OUTPUT
-          echo '```' >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "### Links" >> $GITHUB_OUTPUT
-          echo "- [npm](https://www.npmjs.com/package/sun-hierarchy/v/${VERSION})" >> $GITHUB_OUTPUT
-          echo "- [Changelog](https://github.com/sylsaint/sun-hierarchy/compare/v$(git tag --sort=-v:refname | head -1 | sed 's/^v//')...v${VERSION})" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "---" >> $GITHUB_OUTPUT
-          echo "$EOF" >> $GITHUB_OUTPUT
-
-      - name: Create tag and GitHub Release
-        if: steps.check_tag.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.pkg.outputs.version }}
-          name: v${{ steps.pkg.outputs.version }}
-          body: ${{ steps.body.outputs.content }}
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag v${{ steps.pkg.outputs.version }}
+          git push origin v${{ steps.pkg.outputs.version }}

@@ -1,4 +1,7 @@
-name: Publish to npm
+# Triggered by a new version tag (v*).
+# Builds, tests, publishes to npm, and creates a GitHub Release.
+
+name: Build, Test and Publish
 
 on:
   push:
@@ -9,7 +12,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - name: Checkout
@@ -41,7 +44,7 @@ jobs:
 
       - name: Verify version matches tag
         run: |
-          PKG_VERSION=$(node -p "require('./package.json').version")
+          PKG_VERSION=$(jq -r .version package.json)
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
           if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
             echo "❌ Version mismatch: package.json=$PKG_VERSION, tag=$TAG_VERSION"
@@ -53,3 +56,36 @@ jobs:
         run: pnpm publish --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_SECRET }}
+
+      - name: Generate release body
+        id: body
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^v${VERSION}$" | head -1)
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "content<<$EOF" >> $GITHUB_OUTPUT
+          echo "## 📦 sun-hierarchy v${VERSION}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Install" >> $GITHUB_OUTPUT
+          echo '```bash' >> $GITHUB_OUTPUT
+          echo "npm install sun-hierarchy@${VERSION}" >> $GITHUB_OUTPUT
+          echo '```' >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Links" >> $GITHUB_OUTPUT
+          echo "- [npm](https://www.npmjs.com/package/sun-hierarchy/v/${VERSION})" >> $GITHUB_OUTPUT
+          if [ -n "$PREV_TAG" ]; then
+            echo "- [Changelog](https://github.com/sylsaint/sun-hierarchy/compare/${PREV_TAG}...v${VERSION})" >> $GITHUB_OUTPUT
+          fi
+          echo "" >> $GITHUB_OUTPUT
+          echo "---" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.body.outputs.content }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
