@@ -53,7 +53,7 @@ jobs:
           echo "✅ Version matched: $PKG_VERSION"
 
       - name: Publish to npm
-        run: pnpm publish --no-git-checks --provenance
+        run: pnpm publish --no-git-checks --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_SECRET }}
 
