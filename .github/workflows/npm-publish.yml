@@ -52,8 +52,13 @@ jobs:
           fi
           echo "✅ Version matched: $PKG_VERSION"
 
+      - name: Verify npm token
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_SECRET }}
+
       - name: Publish to npm
-        run: pnpm publish --no-git-checks --ignore-scripts
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_SECRET }}
 
