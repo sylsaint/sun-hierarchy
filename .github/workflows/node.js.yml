@@ -1,17 +1,19 @@
-# When version in package.json changes on master, auto-create a git tag via API.
-# The tag creation will then trigger npm-publish.yml to build, test, and publish.
+# Push to master:
+# - If version in package.json changed (no existing tag), run full build/test/publish pipeline.
+# - If tag already exists, skip everything.
 
-name: Auto Tag on Version Change
+name: CI / Publish
 
 on:
   push:
     branches: [ "master" ]
 
 jobs:
-  tag:
+  check:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ steps.pkg.outputs.version }}
+      should_publish: ${{ steps.check_tag.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,18 +27,62 @@ jobs:
         id: check_tag
         run: |
           if git ls-remote --tags origin | grep -q "refs/tags/v${{ steps.pkg.outputs.version }}$"; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+            echo "Tag v${{ steps.pkg.outputs.version }} already exists, skipping."
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "Tag v${{ steps.pkg.outputs.version }} not found, will publish."
           fi
 
-      - name: Create tag via API
-        if: steps.check_tag.outputs.exists == 'false'
+  publish:
+    needs: check
+    if: needs.check.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Verify npm token
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_SECRET }}
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_SECRET }}
+
+      - name: Create tag and GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.pkg.outputs.version }}
-          name: v${{ steps.pkg.outputs.version }}
-          draft: false
-          prerelease: false
+          tag_name: v${{ needs.check.outputs.version }}
+          name: v${{ needs.check.outputs.version }}
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
