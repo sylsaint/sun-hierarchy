@@ -36,10 +36,12 @@ yarn add sun-hierarchy --save
 
 This library is based on the Sugiyama framework. There are 4 steps to handle the input graph:
 
-1. Divide the input graph into separate isolated sub-graphs
-2. Use longest path to determine hierarchy of each graph
+1. Divide the input graph into separate connected components
+2. Use longest path to determine hierarchy of each component
 3. Reduce crossings by heuristic barycentric method
 4. Position vertices of each level with the algorithm: "Fast and Simple Horizontal Coordinate Assignment"
+
+By default, all disconnected components (forests, isolated nodes) are merged into a single graph and laid out side by side. Set `mergeComponents: false` to get separate sub-graphs.
 
 ## Usage
 

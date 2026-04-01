@@ -1,6 +1,6 @@
 {
   "name": "sun-hierarchy",
-  "version": "0.2.15",
+"version": "1.0.0",
   "description": "A library for hierarchy graph layout based on sugiyama framework",
   "keywords": [
     "hierarchy",
@@ -56,10 +56,12 @@
   "devDependencies": {
     "@eslint/js": "^9.24.0",
     "@types/chai": "^5.2.2",
+    "@types/dagre": "^0.7.54",
     "@types/lodash": "^4.17.16",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.5.0",
     "chai": "^4.5.0",
+    "dagre": "^0.8.5",
     "eslint": "^9.24.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.1",

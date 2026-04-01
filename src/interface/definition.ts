@@ -7,6 +7,18 @@ export interface LayoutOptions {
   width: number;
   height: number;
   barycentricOptions?: BaryCentricOptions;
+  /**
+   * When true (default), all disconnected components (forests, isolated nodes)
+   * are merged into a single graph and laid out side by side.
+   * When false, each component is returned as a separate Graph.
+   */
+  mergeComponents?: boolean;
+  /**
+   * When true, use Skyline Algorithm to pack components compactly (like Tetris).
+   * When false (default), place components side by side.
+   * Only effective when `mergeComponents` is true.
+   */
+  compactComponents?: boolean;
 }
 
 export interface Margin {

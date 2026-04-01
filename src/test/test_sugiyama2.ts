@@ -28,8 +28,13 @@ describe('Sugiyama layout with 6 sub graphs', () => {
   edges.push(new Edge(vertices[12], vertices[13]));
 
   const g: Graph = new Graph(vertices, edges, { directed: true });
-  it('#layout', () => {
+  it('#layout should merge components by default', () => {
     const graphs: Array<Graph> = layout(g);
+    expect(graphs.length).to.equal(1);
+  });
+
+  it('#layout should split into 6 sub graphs when mergeComponents is false', () => {
+    const graphs: Array<Graph> = layout(g, { width: 100, height: 50, mergeComponents: false });
     expect(graphs.length).to.equal(6);
   });
 });

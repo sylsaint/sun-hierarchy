@@ -413,10 +413,21 @@ describe('Layout visualization - beautiful output', () => {
       new Edge(vertices[4], vertices[5]),
     ];
     const g = new Graph(vertices, edges, { directed: true });
-    const graphs = layout(g, { width: 80, height: 40, gutter: 20 });
+
+    // Default: merged into one graph
+    const mergedGraphs = layout(g, { width: 80, height: 40, gutter: 20 });
+    expect(mergedGraphs.length).to.equal(1);
+
+    console.log('\n=== Disconnected Components (merged) ===');
+    const mergedLevels = getLevelsFromGraph(mergedGraphs[0]);
+    printLayoutResult(mergedLevels, 'Disconnected Components (merged)');
+    saveSvg(mergedLevels, 'disconnected_merged', 'Disconnected Components (merged)');
+
+    // Split mode: separate sub-graphs
+    const graphs = layout(g, { width: 80, height: 40, gutter: 20, mergeComponents: false });
     expect(graphs.length).to.equal(2);
 
-    console.log('\n=== Disconnected Components ===');
+    console.log('\n=== Disconnected Components (split) ===');
     graphs.map((subGraph, idx) => {
       const levels = getLevelsFromGraph(subGraph);
       printLayoutResult(levels, `Component ${idx + 1}`);

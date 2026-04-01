@@ -362,8 +362,36 @@ export function saveSvg(
 }
 
 /**
+ * Extract a comparison group key from a compare_* filename.
+ * e.g. "compare_chain_dagre.svg" → "chain"
+ *      "compare_data1_sun_1.svg" → "data1"
+ *      "compare_complex_dag_dagre.svg" → "complex_dag"
+ * Returns null if the file is not a compare file.
+ */
+function extractCompareGroup(filename: string): string | null {
+  const base = filename.replace('.svg', '');
+  if (!base.startsWith('compare_')) return null;
+  const rest = base.slice('compare_'.length); // e.g. "chain_dagre", "data1_sun_1", "complex_dag_dagre"
+  // Remove trailing _dagre or _sun or _sun_N
+  const cleaned = rest.replace(/_(dagre|sun(?:_\d+)?)$/, '');
+  return cleaned;
+}
+
+/**
+ * Determine if a compare file is a dagre or sun variant.
+ */
+function isCompareType(filename: string): 'dagre' | 'sun' | null {
+  const base = filename.replace('.svg', '');
+  if (!base.startsWith('compare_')) return null;
+  if (/_dagre$/.test(base)) return 'dagre';
+  if (/_sun(?:_\d+)?$/.test(base)) return 'sun';
+  return null;
+}
+
+/**
  * Generate an HTML index page that embeds all SVG files in a directory.
  * This creates a gallery view for easy browsing.
+ * Compare files (compare_*) are displayed in a side-by-side two-column layout.
  */
 export function generateSvgIndex(outputDir?: string): string {
   const dir = resolveOutputDir(outputDir);
@@ -382,11 +410,28 @@ export function generateSvgIndex(outputDir?: string): string {
   // Threshold: SVG wider than this value gets full-width (single column)
   const WIDE_THRESHOLD = 600;
 
-  const cards = svgFiles
+  // ── Separate compare files from normal files ──
+  const normalFiles: string[] = [];
+  const compareGroups = new Map<string, { dagre: string[]; sun: string[] }>();
+
+  svgFiles.forEach((file: string) => {
+    const group = extractCompareGroup(file);
+    const type = isCompareType(file);
+    if (group && type) {
+      if (!compareGroups.has(group)) {
+        compareGroups.set(group, { dagre: [], sun: [] });
+      }
+      compareGroups.get(group)![type].push(file);
+    } else {
+      normalFiles.push(file);
+    }
+  });
+
+  // ── Build normal cards ──
+  const normalCards = normalFiles
     .map((file: string) => {
       const name = file.replace('.svg', '').replace(/_/g, ' ');
 
-      // Read SVG file to extract width attribute for adaptive layout
       let isWide = false;
       try {
         const svgContent = fs.readFileSync(path.join(dir, file), 'utf-8');
@@ -396,7 +441,7 @@ export function generateSvgIndex(outputDir?: string): string {
           isWide = svgWidth > WIDE_THRESHOLD;
         }
       } catch {
-        // Ignore read errors, default to normal card
+        // Ignore read errors
       }
 
       const cardClass = isWide ? 'card card-wide' : 'card';
@@ -408,6 +453,67 @@ export function generateSvgIndex(outputDir?: string): string {
     </div>`;
     })
     .join('\n');
+
+  // ── Build comparison section ──
+  const compareCards: string[] = [];
+  const sortedGroups = Array.from(compareGroups.keys()).sort();
+
+  sortedGroups.forEach((group) => {
+    const { dagre, sun } = compareGroups.get(group)!;
+    const groupTitle = group.replace(/_/g, ' ');
+
+    // Build left side (dagre)
+    const dagreItems = dagre
+      .map(
+        (file) =>
+          `          <div class="compare-item">
+            <object data="${file}" type="image/svg+xml" width="100%"></object>
+          </div>`,
+      )
+      .join('\n');
+
+    // Build right side (sun-hierarchy) — may have multiple sub-graphs
+    const sunItems = sun
+      .map(
+        (file) =>
+          `          <div class="compare-item">
+            <object data="${file}" type="image/svg+xml" width="100%"></object>
+          </div>`,
+      )
+      .join('\n');
+
+    compareCards.push(`    <div class="compare-group">
+      <h3>\u2696\ufe0f ${escapeXml(groupTitle)}</h3>
+      <div class="compare-row">
+        <div class="compare-col">
+          <div class="compare-label dagre-label">Dagre</div>
+${dagreItems}
+        </div>
+        <div class="compare-col">
+          <div class="compare-label sun-label">Sun-Hierarchy</div>
+${sunItems}
+        </div>
+      </div>
+    </div>`);
+  });
+
+  const compareSection =
+    compareCards.length > 0
+      ? `  <h2 class="section-title">\ud83d\udd0d Dagre vs Sun-Hierarchy Comparison</h2>
+  <p class="section-subtitle">Same data, different layout algorithms — side by side</p>
+  <div class="compare-grid">
+${compareCards.join('\n')}
+  </div>`
+      : '';
+
+  const normalSection =
+    normalFiles.length > 0
+      ? `  <h2 class="section-title">\ud83c\udf33 Layout Gallery</h2>
+  <p class="section-subtitle">${normalFiles.length} layouts from test suite</p>
+  <div class="grid">
+${normalCards}
+  </div>`
+      : '';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -435,6 +541,26 @@ export function generateSvgIndex(outputDir?: string): string {
       margin-bottom: 32px;
       font-size: 14px;
     }
+    .section-title {
+      font-size: 22px;
+      color: #333;
+      margin: 40px 0 4px;
+      padding-left: 8px;
+      max-width: 1600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .section-subtitle {
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 20px;
+      padding-left: 8px;
+      max-width: 1600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ── Normal gallery grid ── */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
@@ -471,14 +597,89 @@ export function generateSvgIndex(outputDir?: string): string {
       width: 100%;
       min-height: 150px;
     }
+
+    /* ── Comparison layout ── */
+    .compare-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    .compare-group {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+      transition: box-shadow 0.2s;
+    }
+    .compare-group:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    .compare-group > h3 {
+      padding: 16px 20px 12px;
+      font-size: 16px;
+      color: #444;
+      border-bottom: 1px solid #f0f0f0;
+      text-transform: capitalize;
+      background: #fafafa;
+    }
+    .compare-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .compare-col {
+      padding: 12px 16px 16px;
+      overflow-x: auto;
+      border-right: 1px solid #f0f0f0;
+    }
+    .compare-col:last-child {
+      border-right: none;
+    }
+    .compare-label {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 0 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .dagre-label {
+      color: #d94a4a;
+      background: #fef2f2;
+    }
+    .sun-label {
+      color: #4a90d9;
+      background: #eff8ff;
+    }
+    .compare-item {
+      margin-bottom: 8px;
+    }
+    .compare-item object {
+      width: 100%;
+      min-height: 120px;
+    }
+
+    @media (max-width: 900px) {
+      .compare-row {
+        grid-template-columns: 1fr;
+      }
+      .compare-col {
+        border-right: none;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .compare-col:last-child {
+        border-bottom: none;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>\ud83c\udf33 Sun-Hierarchy Layout Gallery</h1>
+  <h1>Sun-Hierarchy</h1>
   <p class="subtitle">Generated from test suite \u00b7 ${svgFiles.length} layouts</p>
-  <div class="grid">
-${cards}
-  </div>
+${compareSection}
+${normalSection}
 </body>
 </html>`;
 
