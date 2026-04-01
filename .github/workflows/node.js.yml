@@ -52,12 +52,34 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Generate release body
+        if: steps.check_tag.outputs.exists == 'false'
+        id: body
+        run: |
+          VERSION=${{ steps.pkg.outputs.version }}
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "content<<$EOF" >> $GITHUB_OUTPUT
+          echo "## 📦 sun-hierarchy v${VERSION}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Install" >> $GITHUB_OUTPUT
+          echo '```bash' >> $GITHUB_OUTPUT
+          echo "npm install sun-hierarchy@${VERSION}" >> $GITHUB_OUTPUT
+          echo '```' >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Links" >> $GITHUB_OUTPUT
+          echo "- [npm](https://www.npmjs.com/package/sun-hierarchy/v/${VERSION})" >> $GITHUB_OUTPUT
+          echo "- [Changelog](https://github.com/sylsaint/sun-hierarchy/compare/v$(git tag --sort=-v:refname | head -1 | sed 's/^v//')...v${VERSION})" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "---" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
       - name: Create tag and GitHub Release
         if: steps.check_tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.pkg.outputs.version }}
           name: v${{ steps.pkg.outputs.version }}
+          body: ${{ steps.body.outputs.content }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
