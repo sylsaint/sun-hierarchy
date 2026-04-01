@@ -13,7 +13,17 @@ interface SvgStyle {
   nodeHeight: number;
   fontSize: number;
   fontFamily: string;
+  /** Root node (in-degree = 0) fill color */
+  rootFill: string;
+  /** Root node stroke color */
+  rootStroke: string;
+  /** Leaf node (out-degree = 0) fill color */
+  leafFill: string;
+  /** Leaf node stroke color */
+  leafStroke: string;
+  /** Internal node fill color */
   nodeFill: string;
+  /** Internal node stroke color */
   nodeStroke: string;
   edgeStroke: string;
   edgeWidth: number;
@@ -28,8 +38,12 @@ const defaultStyle: SvgStyle = {
   nodeHeight: 40,
   fontSize: 13,
   fontFamily: "'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace",
-  nodeFill: '#fde8e8',
-  nodeStroke: '#d94a4a',
+  rootFill: '#d4edda',
+  rootStroke: '#28a745',
+  leafFill: '#fff3cd',
+  leafStroke: '#e6a817',
+  nodeFill: '#e8f4fd',
+  nodeStroke: '#4a90d9',
   edgeStroke: '#888',
   edgeWidth: 1.5,
   bgColor: '#ffffff',
@@ -193,13 +207,26 @@ export function generateDagreSvg(
   });
 
   const titleAreaHeight = 40;
+  const legendAreaHeight = 28;
   const statsAreaHeight = 30;
 
   const svgWidth = maxX - minX + s.padding * 2;
-  const svgHeight = maxY - minY + s.padding * 2 + titleAreaHeight + statsAreaHeight;
+  const svgHeight = maxY - minY + s.padding * 2 + titleAreaHeight + legendAreaHeight + statsAreaHeight;
 
   const offsetX = s.padding - minX;
-  const offsetY = s.padding - minY + titleAreaHeight;
+  const offsetY = s.padding - minY + titleAreaHeight + legendAreaHeight;
+
+  // ── Compute in-degree and out-degree for each node ──
+  const inDegree = new Map<string, number>();
+  const outDegree = new Map<string, number>();
+  nodes.forEach((id) => {
+    if (!inDegree.has(id)) inDegree.set(id, 0);
+    if (!outDegree.has(id)) outDegree.set(id, 0);
+  });
+  edgeObjs.forEach((e) => {
+    outDegree.set(e.v, (outDegree.get(e.v) ?? 0) + 1);
+    inDegree.set(e.w, (inDegree.get(e.w) ?? 0) + 1);
+  });
 
   // ── Stats ──
   const statsText = `${nodes.length} nodes · ${edgeObjs.length} edges`;
@@ -234,6 +261,29 @@ export function generateDagreSvg(
   // Title underline
   parts.push(
     `  <line x1="${s.padding / 2}" y1="${titleAreaHeight}" x2="${svgWidth - s.padding / 2}" y2="${titleAreaHeight}" stroke="#e0e0e0" stroke-width="1" />`,
+  );
+
+  // Legend
+  const legendY = titleAreaHeight + legendAreaHeight / 2 + 5;
+  const legendItems = [
+    { fill: s.rootFill, stroke: s.rootStroke, label: 'Root' },
+    { fill: s.leafFill, stroke: s.leafStroke, label: 'Leaf' },
+    { fill: s.nodeFill, stroke: s.nodeStroke, label: 'Internal' },
+  ];
+  const legendItemWidth = 90;
+  const legendTotalWidth = legendItems.length * legendItemWidth;
+  const legendStartX = (svgWidth - legendTotalWidth) / 2;
+  legendItems.forEach(({ fill, stroke, label }, i) => {
+    const lx = legendStartX + i * legendItemWidth;
+    parts.push(
+      `  <rect x="${lx}" y="${legendY - 8}" width="14" height="14" rx="3" ry="3" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />`,
+    );
+    parts.push(
+      `  <text x="${lx + 18}" y="${legendY + 3}" font-size="11" font-family="${s.fontFamily}" fill="#555">${label}</text>`,
+    );
+  });
+  parts.push(
+    `  <line x1="${s.padding / 2}" y1="${titleAreaHeight + legendAreaHeight}" x2="${svgWidth - s.padding / 2}" y2="${titleAreaHeight + legendAreaHeight}" stroke="#e0e0e0" stroke-width="1" />`,
   );
 
   // ── Draw edges ──
@@ -280,7 +330,7 @@ export function generateDagreSvg(
 
   // ── Draw nodes ──
   parts.push(`  <g class="nodes">`);
-  nodeInfos.forEach(({ x, y, width, height, label }) => {
+  nodeInfos.forEach(({ id, x, y, width, height, label }) => {
     const nx = x + offsetX;
     const ny = y + offsetY;
     const rx = nx - width / 2;
@@ -292,8 +342,14 @@ export function generateDagreSvg(
       displayLabel = displayLabel.slice(0, 12) + '..';
     }
 
+    // Determine node role: root (in-degree=0), leaf (out-degree=0), or internal
+    const isRoot = (inDegree.get(id) ?? 0) === 0;
+    const isLeaf = (outDegree.get(id) ?? 0) === 0;
+    const fill = isRoot ? s.rootFill : isLeaf ? s.leafFill : s.nodeFill;
+    const stroke = isRoot ? s.rootStroke : isLeaf ? s.leafStroke : s.nodeStroke;
+
     parts.push(
-      `    <rect x="${rx}" y="${ry}" width="${width}" height="${height}" rx="6" ry="6" fill="${s.nodeFill}" stroke="${s.nodeStroke}" stroke-width="1.5" filter="url(#shadow)" />`,
+      `    <rect x="${rx}" y="${ry}" width="${width}" height="${height}" rx="6" ry="6" fill="${fill}" stroke="${stroke}" stroke-width="1.5" filter="url(#shadow)" />`,
     );
     parts.push(
       `    <text x="${nx}" y="${ny + s.fontSize * 0.35}" text-anchor="middle" font-size="${s.fontSize}" font-family="${s.fontFamily}" fill="#333">${escapeXml(displayLabel)}</text>`,

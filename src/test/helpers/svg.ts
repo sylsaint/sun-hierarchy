@@ -22,9 +22,17 @@ interface SvgStyle {
   fontSize: number;
   /** Font family */
   fontFamily: string;
-  /** Node fill color */
+  /** Root node (in-degree = 0) fill color */
+  rootFill: string;
+  /** Root node stroke color */
+  rootStroke: string;
+  /** Leaf node (out-degree = 0) fill color */
+  leafFill: string;
+  /** Leaf node stroke color */
+  leafStroke: string;
+  /** Internal node fill color */
   nodeFill: string;
-  /** Node stroke color */
+  /** Internal node stroke color */
   nodeStroke: string;
   /** Dummy node fill color */
   dummyFill: string;
@@ -47,6 +55,10 @@ const defaultStyle: SvgStyle = {
   dummyRadius: 5,
   fontSize: 13,
   fontFamily: "'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace",
+  rootFill: '#d4edda',
+  rootStroke: '#28a745',
+  leafFill: '#fff3cd',
+  leafStroke: '#e6a817',
   nodeFill: '#e8f4fd',
   nodeStroke: '#4a90d9',
   dummyFill: '#ccc',
@@ -87,6 +99,7 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
   // ── Compute node positions (center of each node) ──
   const nodes: {
     v: Vertex;
+    id: string | number;
     cx: number;
     cy: number;
     label: string;
@@ -95,6 +108,30 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
 
   // Build a map from vertex id to node info
   const nodeMap = new Map<string | number, { cx: number; cy: number; isDummy: boolean }>();
+
+  // ── Compute in-degree and out-degree for each real node ──
+  // Initialize all real nodes with degree 0
+  const inDegree = new Map<string | number, number>();
+  const outDegree = new Map<string | number, number>();
+  all.forEach((v) => {
+    if (v.getOptions('type') === DUMMY) return;
+    if (!inDegree.has(v.id)) inDegree.set(v.id, 0);
+    if (!outDegree.has(v.id)) outDegree.set(v.id, 0);
+  });
+  // Walk all edges: edge.up → edge.down
+  all.forEach((v) => {
+    if (v.getOptions('type') === DUMMY) return;
+    v.edges.forEach((edge) => {
+      const src = edge.up;
+      const tgt = edge.down;
+      // Only count edges where this vertex is the source (up)
+      if (src.id !== v.id) return;
+      // Skip dummy endpoints
+      if (src.getOptions('type') === DUMMY || tgt.getOptions('type') === DUMMY) return;
+      outDegree.set(src.id, (outDegree.get(src.id) ?? 0) + 1);
+      inDegree.set(tgt.id, (inDegree.get(tgt.id) ?? 0) + 1);
+    });
+  });
 
   // ── Position strategy ──
   // Check whether the layout algorithm has assigned meaningful x/y coordinates.
@@ -167,7 +204,7 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
       const rawY = (v.getOptions('y') ?? 0) as number;
       const cx = Math.round((rawX - minRawX) * xScale) + s.nodeWidth / 2;
       const cy = Math.round((rawY - minRawY) * yScale) + s.nodeHeight / 2;
-      nodes.push({ v, cx, cy, label, isDummy });
+      nodes.push({ v, id: v.id, cx, cy, label, isDummy });
       nodeMap.set(v.id, { cx, cy, isDummy });
     });
   } else {
@@ -186,7 +223,7 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
         const label = isDummy ? '' : String(v.id);
         const cx = rowOffset + colIdx * cellWidth + s.nodeWidth / 2;
         const cy = rowIdx * cellHeight + s.nodeHeight / 2;
-        nodes.push({ v, cx, cy, label, isDummy });
+        nodes.push({ v, id: v.id, cx, cy, label, isDummy });
         nodeMap.set(v.id, { cx, cy, isDummy });
       });
     });
@@ -208,14 +245,15 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
 
   // Title and stats area
   const titleAreaHeight = 40;
+  const legendAreaHeight = 28;
   const statsAreaHeight = 30;
 
   const svgWidth = maxX - minX + s.padding * 2;
-  const svgHeight = maxY - minY + s.padding * 2 + titleAreaHeight + statsAreaHeight;
+  const svgHeight = maxY - minY + s.padding * 2 + titleAreaHeight + legendAreaHeight + statsAreaHeight;
 
   // Offset to shift all coordinates into the padded area
   const offsetX = s.padding - minX;
-  const offsetY = s.padding - minY + titleAreaHeight;
+  const offsetY = s.padding - minY + titleAreaHeight + legendAreaHeight;
 
   // ── Route edges using core library ──
   // Build a position lookup that maps vertex → rendered center (with offset)
@@ -268,6 +306,29 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
     `  <line x1="${s.padding / 2}" y1="${titleAreaHeight}" x2="${svgWidth - s.padding / 2}" y2="${titleAreaHeight}" stroke="#e0e0e0" stroke-width="1" />`,
   );
 
+  // Legend
+  const legendY = titleAreaHeight + legendAreaHeight / 2 + 5;
+  const legendItems = [
+    { fill: s.rootFill, stroke: s.rootStroke, label: 'Root' },
+    { fill: s.leafFill, stroke: s.leafStroke, label: 'Leaf' },
+    { fill: s.nodeFill, stroke: s.nodeStroke, label: 'Internal' },
+  ];
+  const legendItemWidth = 90;
+  const legendTotalWidth = legendItems.length * legendItemWidth;
+  const legendStartX = (svgWidth - legendTotalWidth) / 2;
+  legendItems.forEach(({ fill, stroke, label }, i) => {
+    const lx = legendStartX + i * legendItemWidth;
+    parts.push(
+      `  <rect x="${lx}" y="${legendY - 8}" width="14" height="14" rx="3" ry="3" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />`,
+    );
+    parts.push(
+      `  <text x="${lx + 18}" y="${legendY + 3}" font-size="11" font-family="${s.fontFamily}" fill="#555">${label}</text>`,
+    );
+  });
+  parts.push(
+    `  <line x1="${s.padding / 2}" y1="${titleAreaHeight + legendAreaHeight}" x2="${svgWidth - s.padding / 2}" y2="${titleAreaHeight + legendAreaHeight}" stroke="#e0e0e0" stroke-width="1" />`,
+  );
+
   // ── Draw edges ──
   parts.push(`  <g class="edges">`);
   edgePaths.forEach((ep) => {
@@ -281,7 +342,7 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
 
   // ── Draw nodes ──
   parts.push(`  <g class="nodes">`);
-  nodes.forEach(({ cx, cy, label, isDummy }) => {
+  nodes.forEach(({ id, cx, cy, label, isDummy }) => {
     const x = cx + offsetX;
     const y = cy + offsetY;
 
@@ -295,6 +356,12 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
       const rx = x - s.nodeWidth / 2;
       const ry = y - s.nodeHeight / 2;
 
+      // Determine node role: root (in-degree=0), leaf (out-degree=0), or internal
+      const isRoot = (inDegree.get(id) ?? 0) === 0;
+      const isLeaf = (outDegree.get(id) ?? 0) === 0;
+      const fill = isRoot ? s.rootFill : isLeaf ? s.leafFill : s.nodeFill;
+      const stroke = isRoot ? s.rootStroke : isLeaf ? s.leafStroke : s.nodeStroke;
+
       // Truncate long labels
       let displayLabel = label;
       if (displayLabel.length > 14) {
@@ -302,7 +369,7 @@ export function generateSvg(levels: Vertex[][], title = 'Hierarchical Layout', s
       }
 
       parts.push(
-        `    <rect x="${rx}" y="${ry}" width="${s.nodeWidth}" height="${s.nodeHeight}" rx="6" ry="6" fill="${s.nodeFill}" stroke="${s.nodeStroke}" stroke-width="1.5" filter="url(#shadow)" />`,
+        `    <rect x="${rx}" y="${ry}" width="${s.nodeWidth}" height="${s.nodeHeight}" rx="6" ry="6" fill="${fill}" stroke="${stroke}" stroke-width="1.5" filter="url(#shadow)" />`,
       );
       parts.push(
         `    <text x="${x}" y="${y + s.fontSize * 0.35}" text-anchor="middle" font-size="${s.fontSize}" font-family="${s.fontFamily}" fill="#333">${escapeXml(displayLabel)}</text>`,

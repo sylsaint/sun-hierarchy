@@ -19,6 +19,7 @@
   "scripts": {
     "test": "nyc mocha --require ts-node/register --require tsconfig-paths/register src/test/*.ts",
     "test:svg": "mocha --require ts-node/register --require tsconfig-paths/register src/test/*.ts && echo '\n✅ SVG files generated in svg-output/ — open svg-output/index.html to browse'",
+    "examples": "ts-node --require tsconfig-paths/register src/scripts/generate-examples.ts",
     "test-single": "nyc mocha --require ts-node/register --require tsconfig-paths/register",
     "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
     "format": "prettier --write \"src/**/*.ts\"",
